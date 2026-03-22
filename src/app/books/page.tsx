@@ -7,24 +7,37 @@ import { Card, CardContent } from "../../components/ui/card";
 import { Badge } from "../../components/ui/badge";
 import Link from 'next/link';
 import AddBookDialog from "../../components/book/AddBookDialog";
+import { mockBooks } from "../../lib/mock-data";
 import { Book } from "../../types"; 
 
 export const dynamic = 'force-dynamic';
 
 export default async function Bookshelf() {
-  const { env } = await getCloudflareContext({ async: true });
-  const db = env.library_db as any;
 
-  let dbBooks: any[] = []; 
-  if (db) {
-    const { results } = await db.prepare("SELECT * FROM books ORDER BY addedAt DESC").all();
-    dbBooks = results;
+  let realBooks: Book[] = [];
+
+  // 2. 核心改造：使用 try-catch 包裹 Cloudflare 专有环境的获取逻辑
+  try {
+    const { env } = await getCloudflareContext({ async: true });
+    const db = env.library_db as any;
+
+    if (db) {
+      // 如果获取到了线上数据库，就查真实数据
+      const { results } = await db.prepare("SELECT * FROM books ORDER BY addedAt DESC").all();
+      realBooks = results.map((book: any) => ({
+        ...book,
+        tags: book.tags ? JSON.parse(book.tags) : []
+      }));
+    }
+  } catch (error) {
+    // 3. 【本地极速模式】
+    // 在普通 npm run dev 环境下，由于没有 Cloudflare 环境，上面会报错跳到这里
+    // 我们直接拦截这个错误，并把 mockBooks 塞给页面！
+    console.log("🔧 当前处于本地无数据库模式，使用 Mock 数据渲染 UI");
+    realBooks = mockBooks;
   }
 
-  const realBooks: Book[] = dbBooks.map((book: any) => ({
-    ...book,
-    tags: book.tags ? JSON.parse(book.tags) : []
-  }));
+  
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto h-full flex flex-col">
