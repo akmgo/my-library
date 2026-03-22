@@ -14,9 +14,9 @@ interface AddBookPayload {
 
 export async function addBookToDB(payload: AddBookPayload) {
   // 2. 用官方方法获取 D1 数据库实例
-  const { env } = getCloudflareContext();
+  const { env } = await getCloudflareContext({ async: true });
   const db = env.library_db as any;
-  
+
   if (!db) {
     throw new Error("数据库连接失败");
   }

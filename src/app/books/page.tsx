@@ -15,10 +15,12 @@ import AddBookDialog from "../../components/book/AddBookDialog";
 // 新增这一行：引入我们在第一步定义的接口
 import { Book } from "../../types";
 
+// 1. 【核心修复】加上这行代码，强制开启动态渲染 (SSR)
+export const dynamic = 'force-dynamic';
 
 export default async function Bookshelf() {
 
-  const { env } = getCloudflareContext();
+  const { env } = await getCloudflareContext({ async: true });
   const db = env.library_db as any;
 
   // 1. 给 dbBooks 加上 : any[]，防止初始化为空数组时报错
