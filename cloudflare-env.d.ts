@@ -9,7 +9,10 @@ declare namespace Cloudflare {
 		WORKER_SELF_REFERENCE: Fetcher /* my-library */;
 	}
 }
-interface CloudflareEnv extends Cloudflare.Env {}
+interface CloudflareEnv extends Cloudflare.Env {
+    // 告诉 TypeScript：我们绑定了一个叫 library_db 的 D1 数据库
+  library_db: D1Database;
+}
 type StringifyValues<EnvType extends Record<string, unknown>> = {
 	[Binding in keyof EnvType]: EnvType[Binding] extends string ? EnvType[Binding] : string;
 };

@@ -1,5 +1,6 @@
 // src/app/books/page.tsx
 import Link from "next/link";
+import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { Search } from "lucide-react";
 import { Input } from "../../components/ui/input";
 import {
@@ -14,12 +15,11 @@ import AddBookDialog from "../../components/book/AddBookDialog";
 // 新增这一行：引入我们在第一步定义的接口
 import { Book } from "../../types";
 
-// 【极其重要】声明这是一个运行在 Cloudflare 边缘节点的服务端组件
-export const runtime = 'edge';
 
 export default async function Bookshelf() {
 
-  const db = process.env.library_db as any;
+  const { env } = getCloudflareContext();
+  const db = env.library_db as any;
 
   // 1. 给 dbBooks 加上 : any[]，防止初始化为空数组时报错
   let dbBooks: any[] = []; 
