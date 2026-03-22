@@ -1,0 +1,60 @@
+// src/lib/mock-data.ts
+import { Book } from '../types';
+
+export const mockBooks: Book[] = [
+  {
+    id: '1',
+    title: '万古神帝',
+    author: '飞天鱼',
+    coverUrl: 'https://images.unsplash.com/photo-1614728263952-84ea256f9679?q=80&w=300&auto=format&fit=crop',
+    status: 'READING',
+    progress: 75,
+    tags: ['玄幻', '网文'],
+    addedAt: '2025-12-01',
+    updatedAt: '2026-03-20',
+  },
+  {
+    id: '2',
+    title: '星辰变',
+    author: '我吃西红柿',
+    coverUrl: 'https://images.unsplash.com/photo-1534447677768-be436bb09401?q=80&w=300&auto=format&fit=crop',
+    status: 'FINISHED',
+    progress: 100,
+    tags: ['玄幻', '修仙'],
+    addedAt: '2025-10-15',
+    updatedAt: '2026-01-14',
+  },
+  {
+    id: '3',
+    title: '高性能后端架构：RPC实战',
+    author: '云原生实验室',
+    coverUrl: 'https://images.unsplash.com/photo-1555066931-4365d14bab8c?q=80&w=300&auto=format&fit=crop',
+    status: 'READING',
+    progress: 30,
+    tags: ['Java', '后端开发', 'RPC'],
+    addedAt: '2026-03-01',
+    updatedAt: '2026-03-18',
+  },
+  {
+    id: '4',
+    title: '中国哲学简史',
+    author: '冯友兰',
+    coverUrl: 'https://images.unsplash.com/photo-1589829085413-56de8ae18c73?q=80&w=300&auto=format&fit=crop',
+    status: 'UNREAD',
+    progress: 0,
+    tags: ['哲学', '历史'],
+    addedAt: '2026-01-06',
+    updatedAt: '2026-01-06',
+  },
+  {
+    id: '5',
+    title: '企业级SaaS架构设计',
+    author: '技术工坊',
+    coverUrl: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?q=80&w=300&auto=format&fit=crop',
+    status: 'UNREAD',
+    progress: 0,
+    tags: ['Java', '系统设计', 'SaaS'],
+    addedAt: '2026-03-15',
+    updatedAt: '2026-03-15',
+  }
+];
