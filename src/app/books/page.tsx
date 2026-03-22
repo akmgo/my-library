@@ -7,6 +7,7 @@ import { Card, CardContent } from "../../components/ui/card";
 import { Badge } from "../../components/ui/badge";
 import Link from 'next/link';
 import AddBookDialog from "../../components/book/AddBookDialog";
+import BookCard from "../../components/book/BookCard";
 import { mockBooks } from "../../lib/mock-data";
 import { Book } from "../../types"; 
 
@@ -67,32 +68,16 @@ export default async function Bookshelf() {
         </TabsList>
 
         <TabsContent value="all" className="mt-6 flex-1">
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6 pb-10">
+          {/* 因为横向卡片比较宽，我们把列数稍微减少一点，让它有呼吸感：PC端3列，超大屏4列 */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8 pb-10 px-2">
+            
             {realBooks.map((book) => (
               <Link href={`/books/${book.id}`} key={book.id}>
-                <Card className="group overflow-hidden border-none shadow-none bg-transparent cursor-pointer">
-                  <CardContent className="p-0 space-y-3">
-                    <div className="relative aspect-[2/3] overflow-hidden rounded-md border border-border/50 bg-muted">
-                      <div 
-                        className="absolute inset-0 bg-cover bg-center transition-transform duration-300 group-hover:scale-105"
-                        style={{ backgroundImage: `url(${book.coverUrl})` }}
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <h3 className="font-semibold text-sm leading-tight line-clamp-2 group-hover:text-primary transition-colors">
-                        {book.title}
-                      </h3>
-                      <p className="text-xs text-muted-foreground line-clamp-1">{book.author}</p>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <Badge variant={book.status === 'FINISHED' ? 'default' : 'secondary'} className="text-[10px] px-1.5 py-0 h-4">
-                        {book.status === 'READING' ? `${book.progress}%` : book.status === 'FINISHED' ? '已读完' : '未读'}
-                      </Badge>
-                    </div>
-                  </CardContent>
-                </Card>
+                {/* 直接调用我们封装好的神仙组件！ */}
+                <BookCard book={book} />
               </Link>
             ))}
+            
           </div>
         </TabsContent>
       </Tabs>

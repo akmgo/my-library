@@ -1,11 +1,10 @@
 // src/app/layout.tsx
 import type { Metadata } from "next";
 import "./globals.css";
-import Sidebar from "../components/layout/Sidebar";
 
 export const metadata: Metadata = {
-  title: "个人图书馆",
-  description: "极简的阅读管理与笔记空间",
+  title: "我的数字书房",
+  description: "极简的个人阅读展厅",
 };
 
 export default function RootLayout({
@@ -15,17 +14,20 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="zh-CN">
-      {/* h-screen: 让整个页面高度等于屏幕高度
-        overflow-hidden: 隐藏最外层的滚动条
-        flex: 开启弹性盒子布局 
-      */}
-      <body className="antialiased flex h-screen overflow-hidden bg-background text-foreground">
+      {/* 整体背景设为极深的 slate-950，文字默认设为亮色 */}
+      <body className="antialiased min-h-screen bg-slate-950 text-slate-100 selection:bg-indigo-500/30 relative overflow-x-hidden">
         
-        {/* 左侧固定的导航栏 */}
-        <Sidebar />
+        {/* ================= 固定的深邃氛围光层 (无任何网格) ================= */}
+        <div className="fixed inset-0 z-[-1] h-full w-full bg-slate-950">
+          {/* 左上角的暗靛蓝色弥散光晕 (透明度调高到 15%，肉眼绝对可见) */}
+          <div className="absolute top-[-10%] left-[-10%] h-[600px] w-[600px] rounded-full bg-indigo-600/15 blur-[120px]"></div>
+          
+          {/* 右下角的暗紫色弥散光晕 */}
+          <div className="absolute bottom-[-10%] right-[-10%] h-[600px] w-[600px] rounded-full bg-purple-600/15 blur-[120px]"></div>
+        </div>
 
-        {/* 右侧主内容区，flex-1 占据剩余所有空间，overflow-y-auto 允许内部垂直滚动 */}
-        <main className="flex-1 overflow-y-auto p-8">
+        {/* ================= 你的主体内容 ================= */}
+        <main className="w-full relative z-10">
           {children}
         </main>
         
