@@ -1,6 +1,7 @@
 // src/components/book/BookCard.tsx
 import React from 'react';
 import { Calendar, Clock, Star } from 'lucide-react';
+import Image from "next/image";
 
 // 定义 Book 类型（如果你的 types 文件里有，可以直接引入）
 export interface Book {
@@ -53,10 +54,13 @@ export default function BookCard({ book }: { book: Book }) {
       
       {/* 1. 顶部：极具电影质感的 16:9 封面 */}
       <div className="w-full aspect-video overflow-hidden relative">
-        <img 
+        <Image 
           src={cover} 
           alt={book.title} 
-          className="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-700 ease-out"
+          fill
+          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+          className="object-cover transform group-hover:scale-105 transition-transform duration-700 ease-out"
+          unoptimized={cover.startsWith('data:')} // 如果是 Base64 直存的图片，跳过 Next 的服务端优化
         />
         {/* 底部渐变遮罩，让图片平滑过渡到卡片底色 */}
         <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-transparent to-transparent opacity-95"></div>

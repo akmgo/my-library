@@ -16,6 +16,8 @@ import {
 import { motion } from "framer-motion";
 import AddExcerptDialog from "../../../components/book/AddExcerptDialog";
 import { getBookDetail, updateBook } from "../../actions";
+import PageTransition from "../../../components/PageTransition";
+import Image from "next/image";
 
 const PREDEFINED_TAGS = [
   "玄幻",
@@ -135,7 +137,8 @@ export default function BookDetailPage({
     "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?q=80&w=1000&auto=format&fit=crop";
 
   return (
-    <div className="relative min-h-screen w-full max-w-7xl mx-auto px-6 md:px-12 pt-24 pb-32">
+    <PageTransition>
+      <div className="relative min-h-screen w-full max-w-7xl mx-auto px-6 md:px-12 pt-24 pb-32">
       <Link
         href="/"
         className="inline-flex items-center text-slate-400 hover:text-white mb-10 transition-colors group"
@@ -148,12 +151,15 @@ export default function BookDetailPage({
         {/* ================= 左侧：书籍元数据 ================= */}
         <div className="lg:col-span-4 flex flex-col space-y-6">
           <div className="w-full aspect-video rounded-2xl overflow-hidden shadow-2xl border border-slate-800 relative group">
-            <img
+            <Image
               src={coverUrl}
               alt={book.title}
+              fill
+              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+              unoptimized={coverUrl.startsWith('data:')}
             />
-            <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-transparent to-transparent opacity-80"></div>
+            <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-transparent to-transparent opacity-60" />
           </div>
 
           <div>
@@ -352,5 +358,6 @@ export default function BookDetailPage({
         </div>
       </div>
     </div>
+    </PageTransition>
   );
 }

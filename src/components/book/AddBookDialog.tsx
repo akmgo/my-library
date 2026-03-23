@@ -17,6 +17,7 @@ import { addBookToDB, searchBookByTitle } from "../../app/actions";
 
 import { ShimmerButton } from "../ui/shimmer-button";
 import { BorderBeam } from "../ui/border-beam";
+import { useTransition } from "react";
 
 // 默认封面底图（如果没有上传图片，则使用这张）
 const DEFAULT_COVER = "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?q=80&w=1000&auto=format&fit=crop";
@@ -25,6 +26,9 @@ export default function AddBookDialog() {
   const [open, setOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSearching, setIsSearching] = useState(false); 
+
+  // 2. 引入后台过渡钩子 (取代之前的 isSubmitting)
+  const [isPending, startTransition] = useTransition();
   
   const [formData, setFormData] = useState({
     title: "",
@@ -80,30 +84,31 @@ export default function AddBookDialog() {
     reader.readAsDataURL(file);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    setIsSubmitting(true);
+    if (isPending) return;
 
-    try {
-      // 提交时，如果有 Base64 封面就用，没有就用你设计的默认统一封面
-      const finalCoverUrl = formData.coverUrl || DEFAULT_COVER;
+    // 【魔法 1】：不要等！瞬间关闭弹窗，给用户极致的反馈速度
+    setOpen(false); 
 
-      const result = await addBookToDB({
-        ...formData,
-        coverUrl: finalCoverUrl 
-      });
-      
-      if (result.success) {
-        setOpen(false); 
-        setFormData({ title: "", author: "", coverUrl: "" }); 
-      } else {
-        alert("保存失败：" + result.error);
+    // 【魔法 2】：把耗时的数据库操作扔进 React 的后台过渡队列里
+    startTransition(async () => {
+      try {
+        const finalCoverUrl = formData.coverUrl || DEFAULT_COVER;
+        // 在后台默默保存
+        const result = await addBookToDB({ ...formData, coverUrl: finalCoverUrl });
+        
+        if (result.success) {
+          // 保存成功且页面被 revalidatePath 刷新后，再清空表单备用
+          setFormData({ title: "", author: "", coverUrl: "" }); 
+        } else {
+          // 如果后台真的失败了，再弹提示（这时候弹窗已经关了，不影响用户看别的）
+          console.error("保存失败：" + result.error);
+        }
+      } catch (error) {
+        console.error("发生错误:", error);
       }
-    } catch (error) {
-      alert("发生错误，请重试");
-    } finally {
-      setIsSubmitting(false);
-    }
+    });
   };
 
   return (
@@ -224,10 +229,10 @@ export default function AddBookDialog() {
                 </Button>
                 <Button 
                   type="submit" 
-                  disabled={isSubmitting}
+                  disabled={isPending}
                   className="bg-slate-800 text-slate-200 border border-slate-700 hover:bg-slate-700 hover:text-white transition-colors"
                 >
-                  {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                  {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                   确认录入
                 </Button>
               </div>

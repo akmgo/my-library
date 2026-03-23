@@ -6,6 +6,7 @@ import AddBookDialog from "../components/book/AddBookDialog";
 import { Boxes } from "../components/ui/background-boxes"; 
 import { VideoText } from "../components/ui/video-text"; 
 import { SparklesText } from "../components/ui/sparkles-text";
+import PageTransition from "../components/PageTransition";
 
 // 强制每次访问都实时获取最新数据，不使用静态缓存
 export const dynamic = 'force-dynamic';
@@ -38,7 +39,8 @@ export default async function Home() {
   const unreadBooks = books.filter((book) => book.status === 'UNREAD');
 
   return (
-    <div className="relative pb-24 w-[90%] md:w-[80%] mx-auto flex flex-col items-center min-h-screen">
+    <PageTransition>
+      <div className="relative pb-24 w-[90%] md:w-[80%] mx-auto flex flex-col items-center min-h-screen">
       
       {/* 右上角的录入新书弹窗入口 */}
       <div className="absolute top-8 right-0 z-50">
@@ -147,5 +149,6 @@ export default async function Home() {
       </section>
 
     </div>
+    </PageTransition>
   );
 }
