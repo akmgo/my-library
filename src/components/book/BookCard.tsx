@@ -50,7 +50,7 @@ export default function BookCard({ book }: { book: Book }) {
   };
 
   return (
-    <div className="group relative flex flex-col w-full rounded-2xl overflow-hidden bg-slate-900/60 border border-slate-800/60 backdrop-blur-xl transition-all duration-500 hover:-translate-y-2 hover:shadow-[0_20px_40px_-15px_rgba(0,0,0,0.7)] hover:border-slate-600/60 cursor-pointer">
+    <div className="group relative flex flex-col w-full rounded-2xl overflow-hidden bg-slate-900/60 border border-slate-800/60 backdrop-blur-xl transition-all duration-500 hover:-translate-y-2 hover:shadow-[0_20px_40px_-15px_rgba(0,0,0,0.7)] hover:border-slate-600/60 cursor-pointer active:scale-[0.98] active:opacity-70 transition-all duration-150">
       
       {/* 1. 顶部：极具电影质感的 16:9 封面 */}
       <div className="w-full aspect-video overflow-hidden relative">

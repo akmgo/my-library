@@ -85,7 +85,7 @@ export default async function Home() {
           <div className="flex justify-start">
             {readingBooks.slice(0, 1).map((book) => (
               <div key={book.id} className="w-full sm:w-[360px] md:w-[400px]">
-                <Link href={`/books/${book.id}`} className="pointer-events-auto block">
+                <Link href={`/books/${book.id}`} prefetch={true} className="block transition-opacity hover:opacity-90">
                   <BookCard book={book} />
                 </Link>
               </div>
