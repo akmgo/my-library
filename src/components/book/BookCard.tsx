@@ -1,102 +1,138 @@
 // src/components/book/BookCard.tsx
-import { Book } from "../../types";
-import {
-  Calendar,
-  Clock,
-  Star,
-  Tag,
-  CheckCircle2,
-  BookOpen,
-} from "lucide-react";
-import { Badge } from "../ui/badge";
+import React from 'react';
+import { Calendar, Clock, Star } from 'lucide-react';
+
+// 定义 Book 类型（如果你的 types 文件里有，可以直接引入）
+export interface Book {
+  id: string;
+  title: string;
+  author: string;
+  coverUrl?: string;
+  status: 'UNREAD' | 'READING' | 'FINISHED';
+  startTime?: string;
+  endTime?: string;
+  rating?: string;
+  tags?: string[];
+}
 
 export default function BookCard({ book }: { book: Book }) {
-  // 模拟一些目前数据库里还没有，但你期望展示的字段（评分、开始/结束时间）
-  const mockRating = 4.8;
-  const mockStartDate = "2026.03.10";
-  const mockEndDate = book.status === "FINISHED" ? "2026.03.20" : "--";
+  // 默认占位图，防止空封面影响排版
+  const cover = book.coverUrl || "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?q=80&w=1000&auto=format&fit=crop";
+
+  // 渲染不同状态的高级发光胶囊
+  const renderStatusPill = () => {
+    switch (book.status) {
+      case 'READING':
+        return (
+          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-medium backdrop-blur-md shadow-[0_0_15px_rgba(16,185,129,0.15)]">
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+            </span>
+            在读
+          </div>
+        );
+      case 'FINISHED':
+        return (
+          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs font-medium backdrop-blur-md shadow-[0_0_15px_rgba(245,158,11,0.15)]">
+            已读完
+          </div>
+        );
+      case 'UNREAD':
+      default:
+        return (
+          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-800/80 border border-slate-600/50 text-slate-300 text-xs font-medium backdrop-blur-md">
+            待读
+          </div>
+        );
+    }
+  };
 
   return (
-    <div className="group relative flex flex-col overflow-hidden rounded-[2rem] border border-white/20 bg-background/40 backdrop-blur-xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.1)] transition-all duration-500 hover:-translate-y-2 hover:shadow-[0_20px_40px_rgb(0,0,0,0.08)] cursor-pointer">
-      {/* 上半部分：横向封面 (16:9 比例) */}
-      <div className="relative aspect-[16/9] w-full overflow-hidden bg-muted">
-        <div
-          className="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-105"
-          style={{ backgroundImage: `url(${book.coverUrl})` }}
+    <div className="group relative flex flex-col w-full rounded-2xl overflow-hidden bg-slate-900/60 border border-slate-800/60 backdrop-blur-xl transition-all duration-500 hover:-translate-y-2 hover:shadow-[0_20px_40px_-15px_rgba(0,0,0,0.7)] hover:border-slate-600/60 cursor-pointer">
+      
+      {/* 1. 顶部：极具电影质感的 16:9 封面 */}
+      <div className="w-full aspect-video overflow-hidden relative">
+        <img 
+          src={cover} 
+          alt={book.title} 
+          className="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-700 ease-out"
         />
-        {/* 封面底部的微弱渐变遮罩，让文字和边缘更平滑 */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+        {/* 底部渐变遮罩，让图片平滑过渡到卡片底色 */}
+        <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-transparent to-transparent opacity-95"></div>
+        
+        {/* 状态胶囊绝对定位在右上角，像一个高级徽章 */}
+        <div className="absolute top-3 right-3 z-10">
+          {renderStatusPill()}
+        </div>
       </div>
 
-      {/* 下半部分：模块化信息区 */}
-      <div className="flex flex-col flex-1 p-5 space-y-4">
-        {/* 书名与作者 */}
-        <div>
-          <h3 className="font-bold text-lg leading-tight tracking-tight line-clamp-1 group-hover:text-primary transition-colors">
+      {/* 2. 底部信息区：根据状态渐进式展示 */}
+      <div className="flex flex-col p-5 pt-2">
+        
+        {/* 常驻信息：书名与作者 */}
+        <div className="mb-3">
+          <h3 className="text-lg font-bold text-slate-100 line-clamp-1 group-hover:text-white transition-colors">
             {book.title}
           </h3>
-          <p className="text-sm text-muted-foreground mt-1 font-medium">
+          <p className="text-sm text-slate-400 line-clamp-1 mt-0.5">
             {book.author}
           </p>
         </div>
 
-        {/* 状态与评分模块区 (液态小胶囊设计) */}
-        <div className="flex flex-wrap gap-2">
-          {/* 状态模块 */}
-          <div
-            className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold backdrop-blur-md ${
-              book.status === "FINISHED"
-                ? "bg-green-500/10 text-green-600 dark:text-green-400"
-                : book.status === "READING"
-                ? "bg-blue-500/10 text-blue-600 dark:text-blue-400"
-                : "bg-muted text-muted-foreground"
-            }`}
-          >
-            {book.status === "FINISHED" ? (
-              <CheckCircle2 className="w-3.5 h-3.5" />
-            ) : (
-              <BookOpen className="w-3.5 h-3.5" />
-            )}
-            {book.status === "READING"
-              ? `阅读中 ${book.progress}%`
-              : book.status === "FINISHED"
-              ? "已读完"
-              : "吃灰中"}
-          </div>
+        {/* 动态信息：根据阅读状态渲染不同内容 */}
+        <div className="mt-auto">
+          
+          {/* 【在读状态】：仅显示开始时间 */}
+          {book.status === 'READING' && book.startTime && (
+            <div className="flex items-center text-xs text-slate-500 gap-1.5 font-medium">
+              <Calendar className="w-3.5 h-3.5 text-emerald-500/70" />
+              <span>开始于 {book.startTime}</span>
+            </div>
+          )}
 
-          {/* 评分模块 */}
-          <div className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-orange-500/10 text-orange-600 dark:text-orange-400 text-xs font-semibold backdrop-blur-md">
-            <Star className="w-3.5 h-3.5 fill-current" />
-            {mockRating}
-          </div>
-        </div>
+          {/* 【已读完状态】：火力全开，展示所有元数据 */}
+          {book.status === 'FINISHED' && (
+            <div className="flex flex-col gap-3">
+              
+              {/* 时间线 */}
+              {(book.startTime || book.endTime) && (
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-slate-500 font-medium">
+                  {book.startTime && <span className="flex items-center gap-1"><Calendar className="w-3 h-3"/> {book.startTime}</span>}
+                  {book.startTime && book.endTime && <span className="text-slate-700">→</span>}
+                  {book.endTime && <span className="flex items-center gap-1"><Clock className="w-3 h-3"/> {book.endTime}</span>}
+                </div>
+              )}
 
-        {/* 时间模块区 */}
-        <div className="flex flex-wrap gap-2 pt-1">
-          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-muted/50 text-xs text-muted-foreground border border-border/50">
-            <Calendar className="w-3 h-3" />
-            <span className="opacity-80">始于 {mockStartDate}</span>
-          </div>
-          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-muted/50 text-xs text-muted-foreground border border-border/50">
-            <Clock className="w-3 h-3" />
-            <span className="opacity-80">终于 {mockEndDate}</span>
-          </div>
-        </div>
+              {/* 评价与标签 (胶囊流布局) */}
+              <div className="flex flex-wrap gap-2 items-center mt-1">
+                {/* 评价胶囊 */}
+                {book.rating && (
+                  <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-yellow-500/10 border border-yellow-500/20 text-yellow-500 text-[11px] font-medium">
+                    <Star className="w-3 h-3 fill-yellow-500/50" />
+                    {book.rating}
+                  </div>
+                )}
+                
+                {/* 标签胶囊 */}
+                {book.tags && book.tags.map(tag => (
+                  <span 
+                    key={tag} 
+                    className="px-2 py-0.5 rounded-md bg-slate-800/60 border border-slate-700 text-slate-300 text-[11px]"
+                  >
+                    {tag}
+                  </span>
+                ))}
+              </div>
 
-        {/* 底部：标签模块区 */}
-        <div className="flex flex-wrap gap-1.5 pt-2 mt-auto">
-          {book.tags.map((tag: string) => (
-            <Badge
-              key={tag}
-              variant="secondary"
-              className="bg-background/60 hover:bg-background/80 text-[10px] px-2 py-0.5 rounded-md border-border/50 shadow-sm"
-            >
-              <Tag className="w-2.5 h-2.5 mr-1" />
-              {tag}
-            </Badge>
-          ))}
+            </div>
+          )}
+
+          {/* 【待读状态】：最极简，底部留白，什么都不显示，只靠右上角的胶囊传达状态 */}
+          
         </div>
       </div>
+
     </div>
   );
 }
