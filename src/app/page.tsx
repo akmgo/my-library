@@ -10,6 +10,8 @@ import { VideoText } from "../components/ui/video-text";
 import { SparklesText } from "../components/ui/sparkles-text";
 import PageTransition from "../components/PageTransition";
 
+export const dynamic = 'force-dynamic';
+
 
 // ==========================================
 // 1. 【新增】：瞬间渲染的骨架屏（Skeleton）

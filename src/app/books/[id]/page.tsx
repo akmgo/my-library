@@ -18,6 +18,7 @@ import { getBookDetail, updateBook } from "../../actions";
 import PageTransition from "../../../components/PageTransition";
 import Image from "next/image";
 import DeleteBookButton from "../../../components/book/DeleteBookButton";
+import { useRouter } from "next/navigation";
 
 const PREDEFINED_TAGS = [
   "玄幻", "仙侠", "历史", "哲学", "投资", "编程", "文学", "科幻",
@@ -63,6 +64,8 @@ function BookContent({ params }: { params: Promise<{ id: string }> }) {
   const [book, setBook] = useState<any>(null);
   const [excerpts, setExcerpts] = useState<any[]>([]);
   const [hoverRating, setHoverRating] = useState(0);
+
+  const router = useRouter();
 
   // 初始化拉取数据
   const fetchBookData = async () => {
@@ -125,13 +128,13 @@ function BookContent({ params }: { params: Promise<{ id: string }> }) {
   return (
     <PageTransition>
       <div className="relative min-h-screen w-full max-w-7xl mx-auto px-6 md:px-12 pt-24 pb-32">
-        <Link
-          href="/"
-          className="inline-flex items-center text-slate-400 hover:text-white mb-10 transition-colors group"
-        >
-          <ArrowLeft className="w-4 h-4 mr-2 group-hover:-translate-x-1 transition-transform" />
-          返回书房
-        </Link>
+      <button
+      onClick={() => router.back()}
+      className="inline-flex items-center text-slate-400 hover:text-white mb-10 transition-colors group"
+    >
+      <ArrowLeft className="w-4 h-4 mr-2 group-hover:-translate-x-1 transition-transform" />
+      返回书房
+    </button>
 
         {book && <DeleteBookButton bookId={id} title={book.title} />}
 
