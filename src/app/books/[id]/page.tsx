@@ -18,6 +18,7 @@ import AddExcerptDialog from "../../../components/book/AddExcerptDialog";
 import { getBookDetail, updateBook } from "../../actions";
 import PageTransition from "../../../components/PageTransition";
 import Image from "next/image";
+import DeleteBookButton from "../../../components/book/DeleteBookButton";
 
 const PREDEFINED_TAGS = [
   "玄幻",
@@ -146,6 +147,8 @@ export default function BookDetailPage({
         <ArrowLeft className="w-4 h-4 mr-2 group-hover:-translate-x-1 transition-transform" />
         返回书房
       </Link>
+
+      {book && <DeleteBookButton bookId={id} title={book.title} />}
 
       <div className="grid grid-cols-1 lg:grid-cols-10 gap-16 lg:gap-24">
         {/* ================= 左侧：书籍元数据 ================= */}

@@ -152,3 +152,33 @@ export async function searchBookByTitle(title: string) {
     return { success: false, error: "书库接口暂时不可用，请检查网络" };
   }
 }
+
+// src/app/actions.ts
+
+// src/app/actions.ts
+
+export async function deleteBookFromDB(id: string) {
+  try {
+    // 【修正点】：统一使用 getCloudflareContext
+    const { env } = await getCloudflareContext({ async: true });
+    const db = env.library_db as any;
+
+    if (!db) {
+      throw new Error("数据库连接失败");
+    }
+    
+    // 1. 删除书籍记录
+    await db.prepare("DELETE FROM books WHERE id = ?").bind(id).run();
+    
+    // 2. 同时删除该书关联的所有摘录
+    await db.prepare("DELETE FROM excerpts WHERE bookId = ?").bind(id).run();
+    
+    // 3. 刷新首页缓存
+    revalidatePath("/");
+    
+    return { success: true };
+  } catch (error: any) {
+    console.error("Delete error:", error);
+    return { success: false, error: error.message || "删除失败" };
+  }
+}
