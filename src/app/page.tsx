@@ -9,8 +9,15 @@ import { Boxes } from "../components/ui/background-boxes";
 import { VideoText } from "../components/ui/video-text";
 import { SparklesText } from "../components/ui/sparkles-text";
 import PageTransition from "../components/PageTransition";
-import ReadingProgress from "../components/book/ReadingProgress";
-import { ComicText } from "../components/ui/comic-text";
+// 1. 引入 dynamic
+import nextDynamic from "next/dynamic";
+
+const ReadingProgress = nextDynamic(() => import("../components/book/ReadingProgress"), { 
+  ssr: false 
+});
+const BoomDecor = nextDynamic(() => import("../components/book/BoomDecor"), { 
+  ssr: false 
+});
 
 export const dynamic = "force-dynamic";
 
@@ -112,13 +119,8 @@ async function BookSections() {
                   </div>
 
                   {/* 【下层 30%】：装饰区 (BOOM!) */}
-                  <div className="flex-[3] flex items-center justify-center bg-slate-900/40 border border-slate-800/60 rounded-[2rem] p-4 backdrop-blur-md relative overflow-hidden group cursor-default">
-                    <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/10 to-purple-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                    <div className="relative z-10 transform transition-transform duration-500 group-hover:scale-110 group-hover:rotate-3">
-                      <ComicText className="text-4xl lg:text-5xl font-black tracking-tighter text-slate-700/50 group-hover:text-white/80 transition-colors duration-500">
-                        AKRAM BOOM!
-                      </ComicText>
-                    </div>
+                  <div className="flex-[3] flex pointer-events-auto">
+                    <BoomDecor />
                   </div>
                 </>
               ) : (
