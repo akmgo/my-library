@@ -54,14 +54,15 @@ export default function BookCard({ book }: { book: Book }) {
       
       {/* 1. 顶部：极具电影质感的 16:9 封面 */}
       <div className="w-full aspect-video overflow-hidden relative">
-        <Image 
+        {/* <Image 
           src={cover} 
           alt={book.title} 
           fill
           sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
           className="object-cover transform group-hover:scale-105 transition-transform duration-700 ease-out"
           unoptimized={cover.startsWith('data:')} // 如果是 Base64 直存的图片，跳过 Next 的服务端优化
-        />
+        /> */}
+        <div className="w-full h-full bg-slate-800" />
         {/* 底部渐变遮罩，让图片平滑过渡到卡片底色 */}
         <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-transparent to-transparent opacity-95"></div>
         
