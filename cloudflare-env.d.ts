@@ -13,6 +13,14 @@ interface CloudflareEnv extends Cloudflare.Env {
     // 告诉 TypeScript：我们绑定了一个叫 library_db 的 D1 数据库
   library_db: D1Database;
 }
+
+interface CloudflareEnv {
+    library_db: D1Database;
+    // 【新增这一行】：告诉 TypeScript 我们有了一个 KV 缓存
+    LIBRARY_CACHE: KVNamespace; 
+}
+
+
 type StringifyValues<EnvType extends Record<string, unknown>> = {
 	[Binding in keyof EnvType]: EnvType[Binding] extends string ? EnvType[Binding] : string;
 };

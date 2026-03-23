@@ -67,7 +67,7 @@ async function BookSections() {
         
         <div className="relative z-20 pointer-events-none">
           <div className="mb-8 flex items-center justify-between pointer-events-auto">
-            <h2 className="text-2xl font-bold tracking-tight text-white">当前在读</h2>
+            <h2 className="text-2xl font-bold tracking-tight text-white">在读</h2>
             <span className="text-sm font-medium text-slate-300">
               {readingBooks.length > 0 ? `${readingBooks.length} 本` : "0 本"}
             </span>
@@ -99,7 +99,7 @@ async function BookSections() {
           
           <div className="relative z-20 pointer-events-none">
             <div className="mb-8 flex items-center justify-between pointer-events-auto">
-              <h2 className="text-2xl font-bold tracking-tight text-white">已读完</h2>
+              <h2 className="text-2xl font-bold tracking-tight text-white">已读</h2>
               <span className="text-sm font-medium text-slate-300">{finishedBooks.length} 本</span>
             </div>
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
@@ -122,7 +122,7 @@ async function BookSections() {
           
           <div className="relative z-20 pointer-events-none">
             <div className="mb-8 flex items-center justify-between pointer-events-auto">
-              <h2 className="text-2xl font-bold tracking-tight text-white">想读</h2>
+              <h2 className="text-2xl font-bold tracking-tight text-white">待读</h2>
               <span className="text-sm font-medium text-slate-300">{unreadBooks.length} 本</span>
             </div>
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">

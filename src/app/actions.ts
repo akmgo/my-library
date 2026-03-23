@@ -4,6 +4,49 @@
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { revalidatePath } from "next/cache";
 
+// ================= 0. 【新增】获取所有书籍（带 KV 边缘缓存） =================
+export async function getAllBooks() {
+  try {
+    const { env } = await getCloudflareContext({ async: true });
+    const db = env.library_db as any;
+    const kv = env.LIBRARY_CACHE as any; // 获取绑定的 KV 实例
+    
+    const CACHE_KEY = "all_books_list";
+
+    // 1. 【查缓存】：如果配置了 KV，先去缓存里找
+    if (kv) {
+      const cachedBooks = await kv.get(CACHE_KEY, "json");
+      if (cachedBooks) {
+        console.log("⚡️ 命中 KV 缓存，毫秒级返回！");
+        return { success: true, books: cachedBooks };
+      }
+    }
+
+    // 2. 【缓存未命中】：老老实实穿透到 D1 数据库查询
+    console.log("🐌 缓存未命中，穿透到 D1 数据库查询...");
+    if (!db) throw new Error("数据库连接失败");
+    
+    // 注意：如果在 schema.sql 中没有 addedAt 字段，可以改成 createdAt 或者干脆删掉 ORDER BY
+    const { results } = await db.prepare("SELECT * FROM books ORDER BY createdAt DESC").all();
+    
+    const books = results.map((book: any) => ({
+      ...book,
+      tags: JSON.parse(book.tags || '[]')
+    }));
+
+    // 3. 【回写缓存】：把查到的最新数据塞进 KV，下次访问就快了
+    if (kv) {
+      await kv.put(CACHE_KEY, JSON.stringify(books));
+      console.log("💾 最新数据已写入 KV 缓存");
+    }
+
+    return { success: true, books };
+  } catch (error: any) {
+    console.error("获取书籍失败:", error);
+    return { success: false, error: error.message };
+  }
+}
+
 // ================= 1. 录入新书 =================
 export async function addBookToDB(formData: {
   title: string;
@@ -13,6 +56,7 @@ export async function addBookToDB(formData: {
   try {
     const { env } = await getCloudflareContext({ async: true });
     const db = env.library_db as any;
+    const kv = env.LIBRARY_CACHE as any;
 
     if (!db) {
       throw new Error("数据库连接失败，请检查 env 配置");
@@ -33,6 +77,12 @@ export async function addBookToDB(formData: {
       )
       .run();
 
+    // 【核心动作】：新增了书，立刻炸毁旧缓存！
+    if (kv) {
+      await kv.delete("all_books_list");
+      console.log("💣 数据库已新增，首页旧缓存已销毁");
+    }
+
     revalidatePath("/");
     return { success: true, id };
   } catch (error: any) {
@@ -47,17 +97,14 @@ export async function getBookDetail(id: string) {
     const { env } = await getCloudflareContext({ async: true });
     const db = env.library_db as any;
 
-    // 获取图书基本信息
     const book = await db
       .prepare("SELECT * FROM books WHERE id = ?")
       .bind(id)
       .first();
     if (!book) return { success: false, error: "未找到该书籍" };
 
-    // 解析 JSON 格式的标签
     book.tags = JSON.parse(book.tags || "[]");
 
-    // 获取关联的摘录，按时间倒序
     const { results: excerpts } = await db
       .prepare(
         "SELECT * FROM excerpts WHERE bookId = ? ORDER BY createdAt DESC"
@@ -76,10 +123,10 @@ export async function updateBook(id: string, updates: any) {
   try {
     const { env } = await getCloudflareContext({ async: true });
     const db = env.library_db as any;
+    const kv = env.LIBRARY_CACHE as any;
 
-    // 动态拼接 SQL SET 语句 (例如: "status = ?, rating = ?")
     const keys = Object.keys(updates);
-    if (keys.length === 0) return { success: true }; // 没有要更新的字段
+    if (keys.length === 0) return { success: true };
 
     const values = Object.values(updates);
     const setClause = keys.map((k) => `${k} = ?`).join(", ");
@@ -89,7 +136,12 @@ export async function updateBook(id: string, updates: any) {
       .bind(...values, id)
       .run();
 
-    // 强制刷新相关页面的缓存，确保下次访问是最新的
+    // 【核心动作】：状态改了，立刻炸毁旧缓存！
+    if (kv) {
+      await kv.delete("all_books_list");
+      console.log("💣 书籍状态已更新，首页旧缓存已销毁");
+    }
+
     revalidatePath(`/books/${id}`);
     revalidatePath(`/`);
     return { success: true };
@@ -111,7 +163,6 @@ export async function addExcerptToDB(bookId: string, content: string) {
       .bind(id, bookId, content)
       .run();
 
-    // 刷新该书籍的详情页缓存，让摘录立刻显示
     revalidatePath(`/books/${bookId}`);
     return { success: true, id };
   } catch (error: any) {
@@ -120,12 +171,9 @@ export async function addExcerptToDB(bookId: string, content: string) {
   }
 }
 
-
 // ================= 5. 联网抓取书籍基本信息 (OpenLibrary 直连版) =================
 export async function searchBookByTitle(title: string) {
   try {
-    // 使用免费、开源且国内可直连的 OpenLibrary API
-    // limit=3 表示抓取前3条记录，增加命中率
     const response = await fetch(
       `https://openlibrary.org/search.json?title=${encodeURIComponent(title)}&limit=3`,
       { method: 'GET' }
@@ -136,11 +184,9 @@ export async function searchBookByTitle(title: string) {
     const data = await response.json() as any;
     
     if (data.docs && data.docs.length > 0) {
-      // 在返回的结果中，找到第一条包含作者名字的数据
       const bookDoc = data.docs.find((doc: any) => doc.author_name && doc.author_name.length > 0);
       
       if (bookDoc) {
-        // 提取作者名字（注意：部分中文书可能是拼音，如 "Yu Hua"）
         const author = bookDoc.author_name.join(", ");
         return { success: true, book: { author } };
       }
@@ -153,27 +199,26 @@ export async function searchBookByTitle(title: string) {
   }
 }
 
-// src/app/actions.ts
-
-// src/app/actions.ts
-
+// ================= 6. 删除书籍 =================
 export async function deleteBookFromDB(id: string) {
   try {
-    // 【修正点】：统一使用 getCloudflareContext
     const { env } = await getCloudflareContext({ async: true });
     const db = env.library_db as any;
+    const kv = env.LIBRARY_CACHE as any;
 
     if (!db) {
       throw new Error("数据库连接失败");
     }
     
-    // 1. 删除书籍记录
     await db.prepare("DELETE FROM books WHERE id = ?").bind(id).run();
-    
-    // 2. 同时删除该书关联的所有摘录
     await db.prepare("DELETE FROM excerpts WHERE bookId = ?").bind(id).run();
     
-    // 3. 刷新首页缓存
+    // 【核心动作】：删除了书，立刻炸毁旧缓存！
+    if (kv) {
+      await kv.delete("all_books_list");
+      console.log("💣 书籍已被删除，首页旧缓存已销毁");
+    }
+
     revalidatePath("/");
     
     return { success: true };

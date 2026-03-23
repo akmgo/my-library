@@ -41,7 +41,13 @@
 			"database_name": "library-db",
 			"database_id": "9f0435af-c289-496a-ad2e-0a2334ef2609"
 		}
-	]
+	],
+	"kv_namespaces": [
+		{
+		  "binding": "LIBRARY_CACHE",
+		  "id": "436305732f3448458f907224d75f61d8"
+		}
+	  ]
 	/**
 	 * Smart Placement
 	 * https://developers.cloudflare.com/workers/configuration/smart-placement/#smart-placement
@@ -60,4 +66,6 @@
 	 * https://developers.cloudflare.com/workers/configuration/secrets/
 	 */
 	// "vars": {  "MY_VARIABLE": "production_value" }
+
+	
 }
