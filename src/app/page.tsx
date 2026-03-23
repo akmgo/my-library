@@ -1,17 +1,18 @@
 // src/app/page.tsx
 import { getCloudflareContext } from "@opennextjs/cloudflare";
-import Link from 'next/link';
+import Link from "next/link";
 import { Suspense } from "react";
 import { Loader2 } from "lucide-react";
 import BookCard from "../components/book/BookCard";
 import AddBookDialog from "../components/book/AddBookDialog";
-import { Boxes } from "../components/ui/background-boxes"; 
-import { VideoText } from "../components/ui/video-text"; 
+import { Boxes } from "../components/ui/background-boxes";
+import { VideoText } from "../components/ui/video-text";
 import { SparklesText } from "../components/ui/sparkles-text";
 import PageTransition from "../components/PageTransition";
+import ReadingProgress from "../components/book/ReadingProgress";
+import { ComicText } from "../components/ui/comic-text";
 
-export const dynamic = 'force-dynamic';
-
+export const dynamic = "force-dynamic";
 
 // ==========================================
 // 1. 【新增】：瞬间渲染的骨架屏（Skeleton）
@@ -41,75 +42,170 @@ async function BookSections() {
   try {
     const { env } = await getCloudflareContext({ async: true });
     const db = env.library_db as any;
-    
+
     if (db) {
-      const { results } = await db.prepare("SELECT * FROM books ORDER BY addedAt DESC").all();
+      const { results } = await db
+        .prepare("SELECT * FROM books ORDER BY addedAt DESC")
+        .all();
       books = results.map((book: any) => ({
         ...book,
-        tags: JSON.parse(book.tags || '[]')
+        tags: JSON.parse(book.tags || "[]"),
       }));
     }
   } catch (error) {
     console.error("数据库读取失败:", error);
-    return <div className="text-red-500 w-full text-center py-10">书库连接失败，请稍后重试。</div>;
+    return (
+      <div className="text-red-500 w-full text-center py-10">
+        书库连接失败，请稍后重试。
+      </div>
+    );
   }
 
-  const readingBooks = books.filter((book) => book.status === 'READING');
-  const finishedBooks = books.filter((book) => book.status === 'FINISHED');
-  const unreadBooks = books.filter((book) => book.status === 'UNREAD');
+  const readingBooks = books.filter((book) => book.status === "READING");
+  const finishedBooks = books.filter((book) => book.status === "FINISHED");
+  const unreadBooks = books.filter((book) => book.status === "UNREAD");
 
   return (
     <>
-      {/* 当前在读区块 */}
-      <section className="w-full relative overflow-hidden rounded-[2.5rem] bg-slate-900 p-8 md:p-12 mb-12 shadow-2xl">
-        <div className="absolute inset-0 w-full h-full bg-slate-900 z-10 [mask-image:radial-gradient(transparent,white)] pointer-events-none" />
-        <div className="absolute inset-0 z-0"><Boxes /></div>
-        
-        <div className="relative z-20 pointer-events-none">
-          <div className="mb-8 flex items-center justify-between pointer-events-auto">
-            <h2 className="text-2xl font-bold tracking-tight text-white">在读</h2>
-            <span className="text-sm font-medium text-slate-300">
-              {readingBooks.length > 0 ? `${readingBooks.length} 本` : "0 本"}
-            </span>
+      {/* ================= 2. 顶部双拼区块：在读 (50%) & 控制台 (50%) ================= */}
+      <section className="w-full grid grid-cols-1 xl:grid-cols-2 gap-10 mb-12">
+        {/* ---------------- 左半边 50%：当前在读区块 ---------------- */}
+        <div className="relative overflow-hidden rounded-[2.5rem] bg-slate-900 p-8 shadow-2xl flex flex-col min-h-[520px]">
+          <div className="absolute inset-0 w-full h-full bg-slate-900 z-10 [mask-image:radial-gradient(transparent,white)] pointer-events-none" />
+          <div className="absolute inset-0 z-0">
+            <Boxes />
           </div>
-          
-          <div className="flex justify-start">
-            {readingBooks.slice(0, 1).map((book) => (
-              <div key={book.id} className="w-full sm:w-[360px] md:w-[400px]">
-                {/* 【优化】：强制加上 prefetch */}
-                <Link href={`/books/${book.id}`} prefetch={true} className="block transition-opacity hover:opacity-90 pointer-events-auto">
-                  <BookCard book={book} />
-                </Link>
+
+          <div className="relative z-20 pointer-events-none flex flex-col h-full">
+            <div className="mb-6 flex items-center justify-between pointer-events-auto">
+              <h2 className="text-2xl font-bold tracking-tight text-white">
+                当前在读
+              </h2>
+              <span className="text-sm font-medium text-slate-300">
+                {readingBooks.length > 0 ? `${readingBooks.length} 本` : "0 本"}
+              </span>
+            </div>
+
+            {/* 核心容器：分为上下两层 (70/30) */}
+            <div className="flex-1 flex flex-col gap-6 pointer-events-auto">
+              {readingBooks.length > 0 ? (
+                <>
+                  {/* 【上层 70%】：分左右 (60/40) */}
+                  <div className="flex-[7] flex flex-col sm:flex-row items-stretch gap-6">
+                    {/* 上层左侧：书籍卡片 (60% 占比) */}
+                    <div className="flex-[6] min-w-0">
+                      <Link
+                        href={`/books/${readingBooks[0].id}`}
+                        prefetch={true}
+                        className="block h-full transition-transform hover:scale-[1.02] duration-500"
+                      >
+                        <div className="h-full">
+                          <BookCard book={readingBooks[0]} />
+                        </div>
+                      </Link>
+                    </div>
+
+                    {/* 上层右侧：进度条 (40% 占比) */}
+                    <div className="flex-[4] min-w-[200px]">
+                      <ReadingProgress book={readingBooks[0]} />
+                    </div>
+                  </div>
+
+                  {/* 【下层 30%】：装饰区 (BOOM!) */}
+                  <div className="flex-[3] flex items-center justify-center bg-slate-900/40 border border-slate-800/60 rounded-[2rem] p-4 backdrop-blur-md relative overflow-hidden group cursor-default">
+                    <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/10 to-purple-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                    <div className="relative z-10 transform transition-transform duration-500 group-hover:scale-110 group-hover:rotate-3">
+                      <ComicText className="text-4xl lg:text-5xl font-black tracking-tighter text-slate-700/50 group-hover:text-white/80 transition-colors duration-500">
+                        AKRAM BOOM!
+                      </ComicText>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <div className="flex-1 flex items-center justify-center text-slate-500 italic">
+                  目前没有正在阅读的书籍
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* ---------------- 右半边 50%：控制台区块 (保持现状) ---------------- */}
+        <div className="relative overflow-hidden rounded-[2.5rem] bg-slate-900 p-8 shadow-2xl flex flex-col border border-slate-800/50">
+          <div className="absolute inset-0 w-full h-full bg-slate-900 z-10 [mask-image:radial-gradient(transparent,white)] pointer-events-none" />
+          <div className="absolute inset-0 z-0">
+            <Boxes />
+          </div>
+
+          <div className="relative z-20 pointer-events-none flex flex-col h-full">
+            <div className="mb-6 flex items-center justify-between pointer-events-auto">
+              <h2 className="text-2xl font-bold tracking-tight text-white">
+                控制台
+              </h2>
+              <span className="text-xs font-medium text-slate-500 border border-slate-700 bg-slate-800/30 px-3 py-1 rounded-full">
+                数据中心
+              </span>
+            </div>
+
+            <div className="flex-1 flex flex-col items-center justify-center pointer-events-auto bg-slate-900/30 rounded-3xl border border-slate-800/50 border-dashed p-6 group transition-colors hover:bg-slate-800/30">
+              <div className="text-center space-y-4">
+                <div className="w-16 h-16 rounded-2xl bg-slate-800/50 flex items-center justify-center mx-auto transition-transform group-hover:scale-110 duration-500">
+                  <svg
+                    className="w-8 h-8 text-slate-500 group-hover:text-blue-400 transition-colors"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={1.5}
+                      d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+                    />
+                  </svg>
+                </div>
+                <h3 className="text-slate-300 font-medium tracking-wide">
+                  数据看板预留
+                </h3>
               </div>
-            ))}
-            {readingBooks.length === 0 && (
-              <div className="py-12 text-slate-400 pointer-events-auto">目前没有正在阅读的书籍</div>
-            )}
+            </div>
           </div>
         </div>
       </section>
 
       {/* 已读 & 待读区块 */}
       <section className="w-full grid grid-cols-1 lg:grid-cols-2 gap-10">
-        
         {/* 左侧：已读区块 */}
         <div className="relative overflow-hidden rounded-[2.5rem] bg-slate-900 p-8 md:p-10 shadow-2xl">
           <div className="absolute inset-0 w-full h-full bg-slate-900 z-10 [mask-image:radial-gradient(transparent,white)] pointer-events-none" />
-          <div className="absolute inset-0 z-0"><Boxes /></div>
-          
+          <div className="absolute inset-0 z-0">
+            <Boxes />
+          </div>
+
           <div className="relative z-20 pointer-events-none">
             <div className="mb-8 flex items-center justify-between pointer-events-auto">
-              <h2 className="text-2xl font-bold tracking-tight text-white">已读</h2>
-              <span className="text-sm font-medium text-slate-300">{finishedBooks.length} 本</span>
+              <h2 className="text-2xl font-bold tracking-tight text-white">
+                已读
+              </h2>
+              <span className="text-sm font-medium text-slate-300">
+                {finishedBooks.length} 本
+              </span>
             </div>
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
               {finishedBooks.map((book) => (
-                <Link href={`/books/${book.id}`} prefetch={true} key={book.id} className="pointer-events-auto block transition-opacity hover:opacity-90">
+                <Link
+                  href={`/books/${book.id}`}
+                  prefetch={true}
+                  key={book.id}
+                  className="pointer-events-auto block transition-opacity hover:opacity-90"
+                >
                   <BookCard book={book} />
                 </Link>
               ))}
               {finishedBooks.length === 0 && (
-                <div className="col-span-full py-8 text-center text-slate-400 text-sm pointer-events-auto">还没有读完的书籍</div>
+                <div className="col-span-full py-8 text-center text-slate-400 text-sm pointer-events-auto">
+                  还没有读完的书籍
+                </div>
               )}
             </div>
           </div>
@@ -118,21 +214,34 @@ async function BookSections() {
         {/* 右侧：想读区块 */}
         <div className="relative overflow-hidden rounded-[2.5rem] bg-slate-900 p-8 md:p-10 shadow-2xl">
           <div className="absolute inset-0 w-full h-full bg-slate-900 z-10 [mask-image:radial-gradient(transparent,white)] pointer-events-none" />
-          <div className="absolute inset-0 z-0"><Boxes /></div>
-          
+          <div className="absolute inset-0 z-0">
+            <Boxes />
+          </div>
+
           <div className="relative z-20 pointer-events-none">
             <div className="mb-8 flex items-center justify-between pointer-events-auto">
-              <h2 className="text-2xl font-bold tracking-tight text-white">待读</h2>
-              <span className="text-sm font-medium text-slate-300">{unreadBooks.length} 本</span>
+              <h2 className="text-2xl font-bold tracking-tight text-white">
+                待读
+              </h2>
+              <span className="text-sm font-medium text-slate-300">
+                {unreadBooks.length} 本
+              </span>
             </div>
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
               {unreadBooks.map((book) => (
-                <Link href={`/books/${book.id}`} prefetch={true} key={book.id} className="pointer-events-auto block transition-opacity hover:opacity-90">
+                <Link
+                  href={`/books/${book.id}`}
+                  prefetch={true}
+                  key={book.id}
+                  className="pointer-events-auto block transition-opacity hover:opacity-90"
+                >
                   <BookCard book={book} />
                 </Link>
               ))}
               {unreadBooks.length === 0 && (
-                <div className="col-span-full py-8 text-center text-slate-400 text-sm pointer-events-auto">书单目前空空如也</div>
+                <div className="col-span-full py-8 text-center text-slate-400 text-sm pointer-events-auto">
+                  书单目前空空如也
+                </div>
               )}
             </div>
           </div>
@@ -149,7 +258,6 @@ export default function Home() {
   return (
     <PageTransition>
       <div className="relative pb-24 w-[90%] md:w-[80%] mx-auto flex flex-col items-center min-h-screen">
-      
         <div className="absolute top-8 right-0 z-50">
           <AddBookDialog />
         </div>
@@ -174,7 +282,6 @@ export default function Home() {
           {/* 在这里，Next.js 会去后台查数据库，查完之后自动替换掉骨架屏 */}
           <BookSections />
         </Suspense>
-
       </div>
     </PageTransition>
   );
