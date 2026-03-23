@@ -11,11 +11,19 @@ import {
   DialogTitle,
   DialogDescription,
 } from "../ui/dialog";
+import { addExcerptToDB } from "../../app/actions";
 
 import { ShimmerButton } from "../ui/shimmer-button";
 import { BorderBeam } from "../ui/border-beam";
 
-export default function AddExcerptDialog() {
+// 【修改点 1】：增加 onSuccess 回调函数属性
+export default function AddExcerptDialog({ 
+  bookId, 
+  onSuccess 
+}: { 
+  bookId: string;
+  onSuccess?: () => void; 
+}) {
   const [open, setOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [content, setContent] = useState("");
@@ -25,17 +33,29 @@ export default function AddExcerptDialog() {
     if (!content.trim()) return;
     
     setIsSubmitting(true);
-    // 模拟网络请求延迟
-    setTimeout(() => {
+    
+    try {
+      const result = await addExcerptToDB(bookId, content);
+      
+      if (result.success) {
+        setOpen(false);
+        setContent(""); 
+        // 【修改点 2】：保存成功后，呼叫父组件去刷新数据！
+        if (onSuccess) {
+          onSuccess();
+        }
+      } else {
+        alert("保存摘录失败：" + result.error);
+      }
+    } catch (error) {
+      alert("发生错误，请重试");
+    } finally {
       setIsSubmitting(false);
-      setOpen(false);
-      setContent("");
-    }, 500);
+    }
   };
 
   return (
     <>
-      {/* 触发器：流光按钮 */}
       <ShimmerButton 
         onClick={() => setOpen(true)} 
         className="shadow-2xl flex items-center gap-2 px-4 py-2"
@@ -46,10 +66,8 @@ export default function AddExcerptDialog() {
         </span>
       </ShimmerButton>
 
-      {/* 弹窗本体 */}
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="sm:max-w-[500px] p-0 overflow-hidden border border-slate-800 bg-slate-950 rounded-xl shadow-2xl">
-          
           <div className="p-6 relative z-10">
             <DialogHeader className="mb-6 text-left space-y-1.5">
               <DialogTitle className="text-xl font-bold leading-none tracking-tight text-white">
@@ -62,7 +80,6 @@ export default function AddExcerptDialog() {
 
             <form onSubmit={handleSubmit}>
               <div className="grid w-full items-center gap-5">
-                {/* 极致精简：只有一个巨大的文本输入区 */}
                 <div className="flex flex-col space-y-2">
                   <textarea 
                     placeholder="输入摘录内容..." 
@@ -95,7 +112,6 @@ export default function AddExcerptDialog() {
               </div>
             </form>
           </div>
-
           <BorderBeam duration={8} size={100} />
         </DialogContent>
       </Dialog>
