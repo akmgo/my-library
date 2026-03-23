@@ -9,15 +9,9 @@ import { Boxes } from "../components/ui/background-boxes";
 import { VideoText } from "../components/ui/video-text";
 import { SparklesText } from "../components/ui/sparkles-text";
 import PageTransition from "../components/PageTransition";
-// 1. 引入 dynamic
-import nextDynamic from "next/dynamic";
-
-const ReadingProgress = nextDynamic(() => import("../components/book/ReadingProgress"), { 
-  ssr: false 
-});
-const BoomDecor = nextDynamic(() => import("../components/book/BoomDecor"), { 
-  ssr: false 
-});
+import ClientOnly from "../components/ClientOnly";
+import ReadingProgress from "../components/book/ReadingProgress";
+import BoomDecor from "../components/book/BoomDecor";
 
 export const dynamic = "force-dynamic";
 
@@ -75,12 +69,17 @@ async function BookSections() {
   return (
     <>
       {/* ================= 2. 顶部双拼区块：在读 (50%) & 控制台 (50%) ================= */}
+      {/* ================= 2. 顶部双拼区块：在读 & 控制台 ================= */}
       <section className="w-full grid grid-cols-1 xl:grid-cols-2 gap-10 mb-12">
         {/* ---------------- 左半边 50%：当前在读区块 ---------------- */}
         <div className="relative overflow-hidden rounded-[2.5rem] bg-slate-900 p-8 shadow-2xl flex flex-col min-h-[520px]">
           <div className="absolute inset-0 w-full h-full bg-slate-900 z-10 [mask-image:radial-gradient(transparent,white)] pointer-events-none" />
+
+          {/* 【性能优化 1】：把最吃 CPU 的背景网格丢给客户端渲染 */}
           <div className="absolute inset-0 z-0">
-            <Boxes />
+            <ClientOnly>
+              <Boxes />
+            </ClientOnly>
           </div>
 
           <div className="relative z-20 pointer-events-none flex flex-col h-full">
@@ -93,13 +92,12 @@ async function BookSections() {
               </span>
             </div>
 
-            {/* 核心容器：分为上下两层 (70/30) */}
             <div className="flex-1 flex flex-col gap-6 pointer-events-auto">
               {readingBooks.length > 0 ? (
                 <>
                   {/* 【上层 70%】：分左右 (60/40) */}
                   <div className="flex-[7] flex flex-col sm:flex-row items-stretch gap-6">
-                    {/* 上层左侧：书籍卡片 (60% 占比) */}
+                    {/* 书籍卡片 (纯静态 UI，服务端渲染没问题) */}
                     <div className="flex-[6] min-w-0">
                       <Link
                         href={`/books/${readingBooks[0].id}`}
@@ -112,15 +110,27 @@ async function BookSections() {
                       </Link>
                     </div>
 
-                    {/* 上层右侧：进度条 (40% 占比) */}
+                    {/* 【性能优化 2】：进度条带有物理动画引擎，甩给客户端 */}
                     <div className="flex-[4] min-w-[200px]">
-                      <ReadingProgress book={readingBooks[0]} />
+                      <ClientOnly
+                        fallback={
+                          <div className="w-full h-full bg-slate-800/40 rounded-[2rem] animate-pulse border border-slate-700/50" />
+                        }
+                      >
+                        <ReadingProgress book={readingBooks[0]} />
+                      </ClientOnly>
                     </div>
                   </div>
 
-                  {/* 【下层 30%】：装饰区 (BOOM!) */}
-                  <div className="flex-[3] flex pointer-events-auto">
-                    <BoomDecor />
+                  {/* 【性能优化 3】：BOOM 装饰区，含有厚重渲染和变体，甩给客户端 */}
+                  <div className="flex-[3] w-full">
+                    <ClientOnly
+                      fallback={
+                        <div className="w-full h-full min-h-[120px] bg-slate-800/40 rounded-[2rem] animate-pulse border border-slate-700/50" />
+                      }
+                    >
+                      <BoomDecor />
+                    </ClientOnly>
                   </div>
                 </>
               ) : (
@@ -132,11 +142,15 @@ async function BookSections() {
           </div>
         </div>
 
-        {/* ---------------- 右半边 50%：控制台区块 (保持现状) ---------------- */}
+        {/* ---------------- 右半边 50%：控制台区块 ---------------- */}
         <div className="relative overflow-hidden rounded-[2.5rem] bg-slate-900 p-8 shadow-2xl flex flex-col border border-slate-800/50">
           <div className="absolute inset-0 w-full h-full bg-slate-900 z-10 [mask-image:radial-gradient(transparent,white)] pointer-events-none" />
+
+          {/* 【同理】：右侧如果有 Boxes，也包起来 */}
           <div className="absolute inset-0 z-0">
-            <Boxes />
+            <ClientOnly>
+              <Boxes />
+            </ClientOnly>
           </div>
 
           <div className="relative z-20 pointer-events-none flex flex-col h-full">
