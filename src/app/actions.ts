@@ -280,28 +280,44 @@ export async function uploadCoverToR2(formData: FormData) {
 export async function getPresignedUrl(fileName: string, contentType: string) {
   try {
     const { env } = await getCloudflareContext({ async: true });
-    // 这里的 env.R2_ACCOUNT_ID 等，就会自动读取你刚才在线上填的那些环境变量啦！
+    
+    // 1. 挨个把变量取出来（去掉前后的空格，防止复制手抖）
+    const accountId = (env.R2_ACCOUNT_ID || "").trim();
+    const accessKeyId = (env.R2_ACCESS_KEY_ID || "").trim();
+    const secretAccessKey = (env.R2_SECRET_ACCESS_KEY || "").trim();
+    const bucketName = (env.R2_BUCKET_NAME || "").trim();
+    const publicDomain = (env.R2_PUBLIC_DOMAIN || "").trim();
+
+    // 2. 终极安检门：缺谁就大声喊出来！
+    if (!accountId || !accessKeyId || !secretAccessKey) {
+      throw new Error(
+        `服务器环境变量丢失！状态：AccountID[${!!accountId}] | AccessKey[${!!accessKeyId}] | SecretKey[${!!secretAccessKey}]`
+      );
+    }
+
     const S3 = new S3Client({
       region: "auto",
-      endpoint: `https://${env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
+      endpoint: `https://${accountId}.r2.cloudflarestorage.com`,
       credentials: {
-        accessKeyId: env.R2_ACCESS_KEY_ID as string,
-        secretAccessKey: env.R2_SECRET_ACCESS_KEY as string,
+        accessKeyId: accessKeyId,
+        secretAccessKey: secretAccessKey,
       },
     });
 
     const uniqueFileName = `${Date.now()}-${fileName.replace(/\s+/g, '-')}`;
+    
     const command = new PutObjectCommand({
-      Bucket: env.R2_BUCKET_NAME as string,
+      Bucket: bucketName,
       Key: uniqueFileName,
       ContentType: contentType,
     });
 
     const uploadUrl = await getSignedUrl(S3, command, { expiresIn: 300 });
-    const finalUrl = `${env.R2_PUBLIC_DOMAIN}/${uniqueFileName}`;
+    const finalUrl = `${publicDomain}/${uniqueFileName}`;
 
     return { success: true, uploadUrl, finalUrl };
   } catch (error: any) {
+    console.error("生成凭证致命错误:", error);
     return { success: false, error: error.message };
   }
 }
