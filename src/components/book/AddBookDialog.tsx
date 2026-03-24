@@ -13,7 +13,8 @@ import {
   DialogTitle,
   DialogDescription,
 } from "../ui/dialog";
-import { addBookToDB, searchBookByTitle } from "../../app/actions";
+// 【新增】：引入 uploadCoverToR2
+import { addBookToDB, searchBookByTitle, uploadCoverToR2 } from "../../app/actions";
 
 import { ShimmerButton } from "../ui/shimmer-button";
 import { BorderBeam } from "../ui/border-beam";
@@ -25,16 +26,16 @@ export default function AddBookDialog() {
   const [isSearching, setIsSearching] = useState(false); 
   const [isPending, startTransition] = useTransition();
   
-  // 【极致优化 1】：只保留封面的 state，因为只有它需要预览图的重新渲染
-  const [coverUrl, setCoverUrl] = useState("");
+  // 专门用来存用户选中的真实 File 文件对象，准备发给 R2
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  
+  // 用于 UI 上的本地快速预览（Base64 或 Blob URL）
+  const [previewUrl, setPreviewUrl] = useState("");
 
-  // 【极致优化 2】：为书名和作者创建 DOM 探针 (不再在打字时触发重渲染！)
   const titleRef = useRef<HTMLInputElement>(null);
   const authorRef = useRef<HTMLInputElement>(null);
 
-  // 联网提取作者
   const handleAutoFill = async () => {
-    // 通过探针直接拿取当前的输入值，不经过 React State
     const currentTitle = titleRef.current?.value.trim();
     
     if (!currentTitle) {
@@ -46,7 +47,6 @@ export default function AddBookDialog() {
     const res = await searchBookByTitle(currentTitle);
     
     if (res.success && res.book && res.book.author) {
-      // 拿到结果后，直接修改原生 DOM 的值，同样不触发弹窗重渲染！
       if (authorRef.current) {
         authorRef.current.value = res.book.author;
       }
@@ -56,55 +56,60 @@ export default function AddBookDialog() {
     setIsSearching(false);
   };
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const img = new Image();
-      img.onload = () => {
-        const canvas = document.createElement("canvas");
-        const MAX_WIDTH = 800; 
-        const scaleSize = MAX_WIDTH / img.width;
-        
-        canvas.width = img.width > MAX_WIDTH ? MAX_WIDTH : img.width;
-        canvas.height = img.width > MAX_WIDTH ? img.height * scaleSize : img.height;
+    // 1. 把真实的 File 对象存起来，留给 R2 上传用
+    setSelectedFile(file);
 
-        const ctx = canvas.getContext("2d");
-        ctx?.drawImage(img, 0, 0, canvas.width, canvas.height);
+    // 2. 生成一个本地的高速预览链接，不卡顿
+    const objectUrl = URL.createObjectURL(file);
+    setPreviewUrl(objectUrl);
+  };
 
-        const compressedBase64 = canvas.toDataURL("image/webp", 0.7);
-        setCoverUrl(compressedBase64); // 仅封面改变时触发一次重渲染
-      };
-      img.src = event.target?.result as string;
-    };
-    reader.readAsDataURL(file);
+  const handleClearImage = () => {
+    setSelectedFile(null);
+    setPreviewUrl("");
   };
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (isPending) return;
 
-    // 【极致优化 3】：拦截表单的瞬间，把所有数据榨取出来
     const formData = new FormData(e.currentTarget);
     const title = formData.get("title") as string;
     const author = formData.get("author") as string;
     
-    // 保存表单 DOM 的引用，用于一会儿清空输入框
     const formElement = e.currentTarget;
 
+    // 【体验核心】：点击确认瞬间，立刻关闭弹窗，假装已经保存完了！
     setOpen(false); 
 
     startTransition(async () => {
       try {
-        const finalCoverUrl = coverUrl || DEFAULT_COVER;
+        let finalCoverUrl = DEFAULT_COVER;
+
+        // 如果用户选了图片，先传给 R2
+        if (selectedFile) {
+          const uploadFormData = new FormData();
+          uploadFormData.append("file", selectedFile);
+          
+          const uploadRes = await uploadCoverToR2(uploadFormData);
+          
+          if (uploadRes.success && uploadRes.coverUrl) {
+            finalCoverUrl = uploadRes.coverUrl;
+          } else {
+            console.error("图片上传 R2 失败，将使用默认封面:", uploadRes.error);
+          }
+        }
+
+        // 把最终的清爽 URL 存进 D1 数据库
         const result = await addBookToDB({ title, author, coverUrl: finalCoverUrl });
         
         if (result.success) {
-          // 成功后：利用原生表单的重置功能清空文字，并清空图片 state
           formElement.reset(); 
-          setCoverUrl(""); 
+          handleClearImage(); 
         } else {
           console.error("保存失败：" + result.error);
         }
@@ -118,7 +123,6 @@ export default function AddBookDialog() {
     <>
       <ShimmerButton 
         onClick={() => setOpen(true)} 
-        // 加上点击下陷特效和 GPU 加速
         className="shadow-2xl flex items-center gap-2 px-5 py-2.5 active:scale-95 transition-transform transform-gpu"
       >
         <Plus className="h-4 w-4 text-white" />
@@ -128,7 +132,6 @@ export default function AddBookDialog() {
       </ShimmerButton>
 
       <Dialog open={open} onOpenChange={setOpen}>
-        {/* 加上 transform-gpu 强制显卡渲染，保证弹出流畅 */}
         <DialogContent className="sm:max-w-[400px] p-0 overflow-hidden border border-slate-800 bg-slate-950 rounded-xl shadow-2xl transform-gpu">
           <div className="p-6 relative z-10">
             <DialogHeader className="mb-6 text-left space-y-1.5">
@@ -140,14 +143,11 @@ export default function AddBookDialog() {
               </DialogDescription>
             </DialogHeader>
 
-            {/* 把原先的 div 改成 form 标签 */}
             <form onSubmit={handleSubmit} className="grid w-full items-center gap-5">
               
-              {/* 书名 */}
               <div className="flex flex-col space-y-2">
                 <Label htmlFor="title" className="font-semibold text-slate-300">书名</Label>
                 <div className="relative">
-                  {/* 去掉 value 和 onChange，换成 ref 和 name */}
                   <Input 
                     id="title" 
                     name="title"
@@ -169,10 +169,8 @@ export default function AddBookDialog() {
                 </div>
               </div>
 
-              {/* 作者 */}
               <div className="flex flex-col space-y-2">
                 <Label htmlFor="author" className="font-semibold text-slate-300">作者</Label>
-                {/* 同样改成不受控组件 */}
                 <Input 
                   id="author" 
                   name="author"
@@ -184,20 +182,19 @@ export default function AddBookDialog() {
                 />
               </div>
 
-              {/* 封面上传与预览区域 (只有这部分受 state 控制) */}
               <div className="flex flex-col space-y-2">
                 <Label className="font-semibold text-slate-300">本地封面 (可选)</Label>
                 
-                {coverUrl ? (
+                {previewUrl ? (
                   <div className="relative w-full h-32 rounded-xl border border-slate-800 overflow-hidden group">
                     <img 
-                      src={coverUrl} 
+                      src={previewUrl} 
                       alt="封面预览" 
                       className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" 
                     />
                     <button 
                       type="button" 
-                      onClick={() => setCoverUrl("")}
+                      onClick={handleClearImage}
                       className="absolute top-2 right-2 p-1.5 bg-black/60 hover:bg-red-500/80 text-white rounded-full backdrop-blur-md transition-colors"
                     >
                       <X className="w-4 h-4" />
@@ -209,7 +206,7 @@ export default function AddBookDialog() {
                       id="cover" 
                       type="file" 
                       accept="image/*" 
-                      onChange={handleImageUpload}
+                      onChange={handleImageSelect}
                       className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
                     />
                     <div className="flex flex-col items-center justify-center w-full h-24 rounded-xl border border-dashed border-slate-700 bg-slate-900/50 group-hover:bg-slate-800/50 group-hover:border-slate-500 transition-all">

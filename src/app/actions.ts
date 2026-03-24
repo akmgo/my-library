@@ -227,3 +227,49 @@ export async function deleteBookFromDB(id: string) {
     return { success: false, error: error.message || "删除失败" };
   }
 }
+
+// src/app/actions.ts
+
+// ================= 8. 上传封面到 R2 存储桶 =================
+export async function uploadCoverToR2(formData: FormData) {
+  try {
+    // 1. 从前端传来的 FormData 中提取文件对象
+    const file = formData.get("file") as File;
+    if (!file) {
+      return { success: false, error: "未接收到图片文件" };
+    }
+
+    // 2. 获取 Cloudflare 上下文和 R2 桶实例
+    const { env } = await getCloudflareContext({ async: true });
+    const bucket = env.COVER_BUCKET as any;
+
+    if (!bucket) {
+      throw new Error("R2 存储桶未绑定，请检查 wrangler.toml 和 env 类型");
+    }
+
+    // 3. 生成全球唯一的随机文件名 (防止同名图片互相覆盖)
+    // 提取原文件的后缀名 (比如 .jpg, .png)
+    const fileExtension = file.name.split('.').pop(); 
+    const fileName = `covers/${crypto.randomUUID()}.${fileExtension}`;
+    
+    // 4. 将 File 对象转换为 R2 认识的 ArrayBuffer 数据流
+    const arrayBuffer = await file.arrayBuffer();
+
+    // 5. 【核心上传动作】：将数据流写入 R2
+    await bucket.put(fileName, arrayBuffer, {
+      httpMetadata: {
+        contentType: file.type, // 告诉浏览器这是一张什么格式的图片，极其重要
+      },
+    });
+
+    // 6. 拼接图片的公网访问链接
+    // ⚠️ 注意：这里必须替换成你真实的 R2 公开域名！(见下方说明)
+    const publicDomain = "https://pub-55956733fff54a6b9e1d921def1c7805.r2.dev"; 
+    const coverUrl = `${publicDomain}/${fileName}`;
+
+    return { success: true, coverUrl };
+  } catch (error: any) {
+    console.error("上传封面失败:", error);
+    return { success: false, error: error.message };
+  }
+}

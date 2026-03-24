@@ -6,8 +6,13 @@ import { initOpenNextCloudflareForDev } from "@opennextjs/cloudflare";
 initOpenNextCloudflareForDev();
 
 const nextConfig: NextConfig = {
+  experimental: {
+    serverActions: {
+      bodySizeLimit: "10mb", // 把限制放宽到 5MB（你也可以改成 10mb）
+    },
+  },
   images: {
-	unoptimized: true,
+    unoptimized: true,
     remotePatterns: [
       {
         protocol: "https",

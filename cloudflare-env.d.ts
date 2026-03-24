@@ -18,6 +18,7 @@ interface CloudflareEnv {
     library_db: D1Database;
     // 【新增这一行】：告诉 TypeScript 我们有了一个 KV 缓存
     LIBRARY_CACHE: KVNamespace; 
+    COVER_BUCKET: R2Bucket;
 }
 
 
