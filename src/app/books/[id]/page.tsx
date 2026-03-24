@@ -21,9 +21,26 @@ import DeleteBookButton from "../../../components/book/DeleteBookButton";
 import { useRouter } from "next/navigation";
 
 const PREDEFINED_TAGS = [
-  "玄幻", "仙侠", "历史", "哲学", "投资", "编程", "文学", "科幻",
-  "商业", "心理", "社会", "传记", "悬疑", "奇幻", "武侠", "经典",
-  "轻小说", "管理", "艺术", "科普",
+  "玄幻",
+  "仙侠",
+  "历史",
+  "哲学",
+  "投资",
+  "编程",
+  "文学",
+  "科幻",
+  "商业",
+  "心理",
+  "社会",
+  "传记",
+  "悬疑",
+  "奇幻",
+  "武侠",
+  "经典",
+  "轻小说",
+  "管理",
+  "艺术",
+  "科普",
 ];
 
 const STATUS_OPTIONS = [
@@ -128,13 +145,13 @@ function BookContent({ params }: { params: Promise<{ id: string }> }) {
   return (
     <PageTransition>
       <div className="relative min-h-screen w-full max-w-7xl mx-auto px-6 md:px-12 pt-24 pb-32">
-      <button
-      onClick={() => router.back()}
-      className="inline-flex items-center text-slate-400 hover:text-white mb-10 transition-colors group"
-    >
-      <ArrowLeft className="w-4 h-4 mr-2 group-hover:-translate-x-1 transition-transform" />
-      返回书房
-    </button>
+        <button
+          onClick={() => router.back()}
+          className="inline-flex items-center text-slate-400 hover:text-white mb-10 transition-colors group"
+        >
+          <ArrowLeft className="w-4 h-4 mr-2 group-hover:-translate-x-1 transition-transform" />
+          返回书房
+        </button>
 
         {book && <DeleteBookButton bookId={id} title={book.title} />}
 
@@ -157,7 +174,9 @@ function BookContent({ params }: { params: Promise<{ id: string }> }) {
               <h1 className="text-3xl md:text-4xl font-extrabold text-white tracking-tight mb-2">
                 {book.title}
               </h1>
-              <p className="text-lg text-slate-400 font-medium">{book.author}</p>
+              <p className="text-lg text-slate-400 font-medium">
+                {book.author}
+              </p>
             </div>
 
             <hr className="border-slate-800/80 my-2" />
@@ -216,7 +235,19 @@ function BookContent({ params }: { params: Promise<{ id: string }> }) {
                       onChange={(e) =>
                         handleBookUpdate({ startTime: e.target.value })
                       }
-                      className="w-full bg-slate-900/50 border border-slate-800 text-slate-200 rounded-xl p-3 focus:outline-none focus:ring-1 focus:ring-slate-600 focus:bg-slate-800 transition-all cursor-text text-sm"
+                      className="
+                        bg-slate-900 border border-slate-700 text-slate-200 
+                        rounded-xl px-4 py-2.5 w-full outline-none 
+                        transition-all duration-300 shadow-inner
+                        hover:bg-slate-800 focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500
+                        /* 👇 下面是魔法：修改原生小日历图标的颜色和行为 */
+                        [&::-webkit-calendar-picker-indicator]:filter 
+                        [&::-webkit-calendar-picker-indicator]:invert 
+                        [&::-webkit-calendar-picker-indicator]:opacity-40 
+                        [&::-webkit-calendar-picker-indicator]:hover:opacity-100 
+                        [&::-webkit-calendar-picker-indicator]:cursor-pointer
+                        [&::-webkit-calendar-picker-indicator]:transition-opacity
+                      "
                       style={{ colorScheme: "dark" }}
                     />
                   </motion.div>
@@ -237,7 +268,19 @@ function BookContent({ params }: { params: Promise<{ id: string }> }) {
                       onChange={(e) =>
                         handleBookUpdate({ endTime: e.target.value })
                       }
-                      className="w-full bg-slate-900/50 border border-slate-800 text-slate-200 rounded-xl p-3 focus:outline-none focus:ring-1 focus:ring-slate-600 focus:bg-slate-800 transition-all cursor-text text-sm"
+                      className="
+                        bg-slate-900 border border-slate-700 text-slate-200 
+                        rounded-xl px-4 py-2.5 w-full outline-none 
+                        transition-all duration-300 shadow-inner
+                        hover:bg-slate-800 focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500
+                        /* 👇 下面是魔法：修改原生小日历图标的颜色和行为 */
+                        [&::-webkit-calendar-picker-indicator]:filter 
+                        [&::-webkit-calendar-picker-indicator]:invert 
+                        [&::-webkit-calendar-picker-indicator]:opacity-40 
+                        [&::-webkit-calendar-picker-indicator]:hover:opacity-100 
+                        [&::-webkit-calendar-picker-indicator]:cursor-pointer
+                        [&::-webkit-calendar-picker-indicator]:transition-opacity
+                      "
                       style={{ colorScheme: "dark" }}
                     />
                   </motion.div>
@@ -289,7 +332,8 @@ function BookContent({ params }: { params: Promise<{ id: string }> }) {
                 <div className="flex flex-wrap gap-2.5">
                   {PREDEFINED_TAGS.map((tag) => {
                     const isSelected = (book.tags || []).includes(tag);
-                    const isMaxed = (book.tags || []).length >= 3 && !isSelected;
+                    const isMaxed =
+                      (book.tags || []).length >= 3 && !isSelected;
                     return (
                       <button
                         key={tag}
@@ -324,7 +368,9 @@ function BookContent({ params }: { params: Promise<{ id: string }> }) {
             <div className="flex flex-col gap-6">
               {excerpts.length === 0 ? (
                 <div className="py-20 flex flex-col items-center justify-center text-center bg-slate-900/30 rounded-2xl border border-slate-800/50 border-dashed">
-                  <p className="text-slate-500 mb-2">这本书还没有留下任何摘录</p>
+                  <p className="text-slate-500 mb-2">
+                    这本书还没有留下任何摘录
+                  </p>
                   <p className="text-sm text-slate-600">
                     点击右上角按钮记录下你的第一条思考
                   </p>

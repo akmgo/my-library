@@ -14,19 +14,23 @@ import {
   DialogDescription,
 } from "../ui/dialog";
 // 【修改】：去掉了 uploadCoverToR2，确保引入了 getPresignedUrl
-import { addBookToDB, searchBookByTitle, getPresignedUrl } from "../../app/actions";
+import {
+  addBookToDB,
+  searchBookByTitle,
+  getPresignedUrl,
+} from "../../app/actions";
 
 import { ShimmerButton } from "../ui/shimmer-button";
-import { BorderBeam } from "../ui/border-beam";
 
-const DEFAULT_COVER = "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?q=80&w=1000&auto=format&fit=crop";
+const DEFAULT_COVER =
+  "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?q=80&w=1000&auto=format&fit=crop";
 
 export default function AddBookDialog() {
   const [open, setOpen] = useState(false);
-  const [isSearching, setIsSearching] = useState(false); 
+  const [isSearching, setIsSearching] = useState(false);
   // 【核心修改 1】：用最稳妥的 useState 替代容易吞报错的 useTransition
   const [isUploading, setIsUploading] = useState(false);
-  
+
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState("");
 
@@ -35,15 +39,15 @@ export default function AddBookDialog() {
 
   const handleAutoFill = async () => {
     const currentTitle = titleRef.current?.value.trim();
-    
+
     if (!currentTitle) {
       alert("请先输入书名！");
       return;
     }
-    
+
     setIsSearching(true);
     const res = await searchBookByTitle(currentTitle);
-    
+
     if (res.success && res.book && res.book.author) {
       if (authorRef.current) {
         authorRef.current.value = res.book.author;
@@ -85,8 +89,11 @@ export default function AddBookDialog() {
 
       if (selectedFile) {
         // 第一步：向服务器要 R2 临时直传通行证
-        const presignRes = await getPresignedUrl(selectedFile.name, selectedFile.type);
-        
+        const presignRes = await getPresignedUrl(
+          selectedFile.name,
+          selectedFile.type
+        );
+
         if (!presignRes.success || !presignRes.uploadUrl) {
           alert("❌ 获取 R2 上传凭证失败: " + presignRes.error);
           setIsUploading(false);
@@ -103,7 +110,9 @@ export default function AddBookDialog() {
         });
 
         if (!uploadResponse.ok) {
-          throw new Error(`R2 拒绝了文件上传，状态码: ${uploadResponse.status}`);
+          throw new Error(
+            `R2 拒绝了文件上传，状态码: ${uploadResponse.status}`
+          );
         }
 
         // 拿到最终的干净图床链接
@@ -111,15 +120,19 @@ export default function AddBookDialog() {
       }
 
       // 第三步：图片搞定，只把轻量级的文本信息存进 D1 数据库
-      const result = await addBookToDB({ title, author, coverUrl: finalCoverUrl });
-      
+      const result = await addBookToDB({
+        title,
+        author,
+        coverUrl: finalCoverUrl,
+      });
+
       if (result.success) {
-        formElement.reset(); 
-        handleClearImage(); 
-        setOpen(false); 
-        
+        formElement.reset();
+        handleClearImage();
+        setOpen(false);
+
         // 强制刷新页面，暴力打破缓存，新书绝对上墙！
-        window.location.reload(); 
+        window.location.reload();
       } else {
         alert("❌ 数据库保存失败：" + result.error);
       }
@@ -132,8 +145,8 @@ export default function AddBookDialog() {
 
   return (
     <>
-      <ShimmerButton 
-        onClick={() => setOpen(true)} 
+      <ShimmerButton
+        onClick={() => setOpen(true)}
         className="shadow-2xl flex items-center gap-2 px-5 py-2.5 active:scale-95 transition-transform transform-gpu"
       >
         <Plus className="h-4 w-4 text-white" />
@@ -143,7 +156,7 @@ export default function AddBookDialog() {
       </ShimmerButton>
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="sm:max-w-[400px] p-0 overflow-hidden border border-slate-800 bg-slate-950 rounded-xl shadow-2xl transform-gpu">
+        <DialogContent className="sm:max-w-[400px] p-0 overflow-hidden border border-slate-800 bg-slate-950 rounded-xl shadow-[0_0_40px_-10px_rgba(99,102,241,0.4)] transform-gpu">
           <div className="p-6 relative z-10">
             <DialogHeader className="mb-6 text-left space-y-1.5">
               <DialogTitle className="text-xl font-bold leading-none tracking-tight text-white">
@@ -154,18 +167,22 @@ export default function AddBookDialog() {
               </DialogDescription>
             </DialogHeader>
 
-            <form onSubmit={handleSubmit} className="grid w-full items-center gap-5">
-              
+            <form
+              onSubmit={handleSubmit}
+              className="grid w-full items-center gap-5"
+            >
               <div className="flex flex-col space-y-2">
-                <Label htmlFor="title" className="font-semibold text-slate-300">书名</Label>
+                <Label htmlFor="title" className="font-semibold text-slate-300">
+                  书名
+                </Label>
                 <div className="relative">
-                  <Input 
-                    id="title" 
+                  <Input
+                    id="title"
                     name="title"
                     ref={titleRef}
                     defaultValue=""
-                    placeholder="例如: 活着" 
-                    required 
+                    placeholder="例如: 活着"
+                    required
                     className="bg-slate-900 border-slate-800 text-white placeholder:text-slate-600 focus-visible:ring-slate-700 pr-12"
                   />
                   <button
@@ -175,36 +192,47 @@ export default function AddBookDialog() {
                     className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-md transition-colors disabled:opacity-50"
                     title="智能提取作者"
                   >
-                    {isSearching ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+                    {isSearching ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Search className="w-4 h-4" />
+                    )}
                   </button>
                 </div>
               </div>
 
               <div className="flex flex-col space-y-2">
-                <Label htmlFor="author" className="font-semibold text-slate-300">作者</Label>
-                <Input 
-                  id="author" 
+                <Label
+                  htmlFor="author"
+                  className="font-semibold text-slate-300"
+                >
+                  作者
+                </Label>
+                <Input
+                  id="author"
                   name="author"
                   ref={authorRef}
                   defaultValue=""
-                  placeholder="例如: 余华" 
-                  required 
+                  placeholder="例如: 余华"
+                  required
                   className="bg-slate-900 border-slate-800 text-white placeholder:text-slate-600 focus-visible:ring-slate-700"
                 />
               </div>
 
               <div className="flex flex-col space-y-2">
-                <Label className="font-semibold text-slate-300">本地封面 (可选)</Label>
-                
+                <Label className="font-semibold text-slate-300">
+                  本地封面 (可选)
+                </Label>
+
                 {previewUrl ? (
                   <div className="relative w-full h-32 rounded-xl border border-slate-800 overflow-hidden group">
-                    <img 
-                      src={previewUrl} 
-                      alt="封面预览" 
-                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" 
+                    <img
+                      src={previewUrl}
+                      alt="封面预览"
+                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                     />
-                    <button 
-                      type="button" 
+                    <button
+                      type="button"
                       onClick={handleClearImage}
                       className="absolute top-2 right-2 p-1.5 bg-black/60 hover:bg-red-500/80 text-white rounded-full backdrop-blur-md transition-colors"
                     >
@@ -213,10 +241,10 @@ export default function AddBookDialog() {
                   </div>
                 ) : (
                   <div className="relative group">
-                    <Input 
-                      id="cover" 
-                      type="file" 
-                      accept="image/*" 
+                    <Input
+                      id="cover"
+                      type="file"
+                      accept="image/*"
                       onChange={handleImageSelect}
                       className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
                     />
@@ -231,28 +259,26 @@ export default function AddBookDialog() {
               </div>
 
               <div className="flex justify-between mt-8">
-                <Button 
-                  type="button" 
-                  variant="outline" 
+                <Button
+                  type="button"
+                  variant="outline"
                   onClick={() => setOpen(false)}
                   className="border-slate-800 bg-transparent text-slate-300 hover:bg-slate-800 hover:text-white"
                 >
                   取消
                 </Button>
-                <Button 
-                  type="submit" 
+                <Button
+                  type="submit"
                   disabled={isUploading}
                   className="bg-slate-800 text-slate-200 border border-slate-700 hover:bg-slate-700 hover:text-white transition-colors"
                 >
-                  {isUploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                  {isUploading ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : null}
                   {isUploading ? "正在录入..." : "确认录入"}
                 </Button>
               </div>
             </form>
-          </div>
-
-          <div className="absolute inset-0 pointer-events-none transform-gpu will-change-transform rounded-xl overflow-hidden">
-             <BorderBeam duration={8} size={100} />
           </div>
         </DialogContent>
       </Dialog>

@@ -14,15 +14,14 @@ import {
 import { addExcerptToDB } from "../../app/actions";
 
 import { ShimmerButton } from "../ui/shimmer-button";
-import { BorderBeam } from "../ui/border-beam";
 
 // 【修改点 1】：增加 onSuccess 回调函数属性
-export default function AddExcerptDialog({ 
-  bookId, 
-  onSuccess 
-}: { 
+export default function AddExcerptDialog({
+  bookId,
+  onSuccess,
+}: {
   bookId: string;
-  onSuccess?: () => void; 
+  onSuccess?: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -31,15 +30,15 @@ export default function AddExcerptDialog({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!content.trim()) return;
-    
+
     setIsSubmitting(true);
-    
+
     try {
       const result = await addExcerptToDB(bookId, content);
-      
+
       if (result.success) {
         setOpen(false);
-        setContent(""); 
+        setContent("");
         // 【修改点 2】：保存成功后，呼叫父组件去刷新数据！
         if (onSuccess) {
           onSuccess();
@@ -56,8 +55,8 @@ export default function AddExcerptDialog({
 
   return (
     <>
-      <ShimmerButton 
-        onClick={() => setOpen(true)} 
+      <ShimmerButton
+        onClick={() => setOpen(true)}
         className="shadow-2xl flex items-center gap-2 px-4 py-2"
       >
         <Plus className="h-4 w-4 text-white" />
@@ -67,7 +66,7 @@ export default function AddExcerptDialog({
       </ShimmerButton>
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="sm:max-w-[500px] p-0 overflow-hidden border border-slate-800 bg-slate-950 rounded-xl shadow-2xl">
+        <DialogContent className="sm:max-w-[400px] p-0 overflow-hidden border border-slate-800 bg-slate-950 rounded-xl shadow-[0_0_40px_-10px_rgba(99,102,241,0.4)] transform-gpu">
           <div className="p-6 relative z-10">
             <DialogHeader className="mb-6 text-left space-y-1.5">
               <DialogTitle className="text-xl font-bold leading-none tracking-tight text-white">
@@ -81,11 +80,11 @@ export default function AddExcerptDialog({
             <form onSubmit={handleSubmit}>
               <div className="grid w-full items-center gap-5">
                 <div className="flex flex-col space-y-2">
-                  <textarea 
-                    placeholder="输入摘录内容..." 
-                    value={content} 
-                    onChange={(e) => setContent(e.target.value)} 
-                    required 
+                  <textarea
+                    placeholder="输入摘录内容..."
+                    value={content}
+                    onChange={(e) => setContent(e.target.value)}
+                    required
                     rows={6}
                     className="w-full bg-slate-900 border border-slate-800 rounded-lg p-4 text-white placeholder:text-slate-600 focus:outline-none focus:ring-1 focus:ring-slate-700 resize-none transition-all"
                   />
@@ -93,26 +92,27 @@ export default function AddExcerptDialog({
               </div>
 
               <div className="flex justify-between mt-8">
-                <Button 
-                  type="button" 
-                  variant="outline" 
+                <Button
+                  type="button"
+                  variant="outline"
                   onClick={() => setOpen(false)}
                   className="border-slate-800 bg-transparent text-slate-300 hover:bg-slate-800 hover:text-white"
                 >
                   取消
                 </Button>
-                <Button 
-                  type="submit" 
+                <Button
+                  type="submit"
                   disabled={isSubmitting || !content.trim()}
                   className="bg-slate-800 text-slate-200 border border-slate-700 hover:bg-slate-700 hover:text-white transition-colors"
                 >
-                  {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                  {isSubmitting ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : null}
                   保存摘录
                 </Button>
               </div>
             </form>
           </div>
-          <BorderBeam duration={8} size={100} />
         </DialogContent>
       </Dialog>
     </>

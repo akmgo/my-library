@@ -5,7 +5,6 @@ import { Suspense } from "react";
 import { Loader2 } from "lucide-react";
 import BookCard from "../components/book/BookCard";
 import AddBookDialog from "../components/book/AddBookDialog";
-import { Boxes } from "../components/ui/background-boxes";
 import { VideoText } from "../components/ui/video-text";
 import { SparklesText } from "../components/ui/sparkles-text";
 import PageTransition from "../components/PageTransition";
@@ -72,17 +71,11 @@ async function BookSections() {
       {/* ================= 2. 顶部双拼区块：在读 & 控制台 ================= */}
       <section className="w-full grid grid-cols-1 xl:grid-cols-2 gap-10 mb-12">
         {/* ---------------- 左半边 50%：当前在读区块 ---------------- */}
-        <div className="relative overflow-hidden rounded-[2.5rem] bg-slate-900 p-8 shadow-2xl flex flex-col min-h-[520px]">
-          <div className="absolute inset-0 w-full h-full bg-slate-900 z-10 [mask-image:radial-gradient(transparent,white)] pointer-events-none" />
+        <div className="relative overflow-hidden rounded-[2.5rem] bg-slate-900 p-8 md:p-10 shadow-2xl">
+          <div className="absolute top-0 left-0 w-[500px] h-[500px] bg-blue-600/10 blur-[100px] rounded-full pointer-events-none -translate-x-1/2 -translate-y-1/2" />
+          <div className="absolute bottom-0 right-0 w-[400px] h-[400px] bg-purple-600/10 blur-[100px] rounded-full pointer-events-none translate-x-1/3 translate-y-1/3" />
 
-          {/* 【性能优化 1】：把最吃 CPU 的背景网格丢给客户端渲染 */}
-          <div className="absolute inset-0 z-0">
-            <ClientOnly>
-              <Boxes />
-            </ClientOnly>
-          </div>
-
-          <div className="relative z-20 pointer-events-none flex flex-col h-full">
+          <div className="relative z-20 flex flex-col h-full">
             <div className="mb-6 flex items-center justify-between pointer-events-auto">
               <h2 className="text-2xl font-bold tracking-tight text-white">
                 当前在读
@@ -144,16 +137,10 @@ async function BookSections() {
 
         {/* ---------------- 右半边 50%：控制台区块 ---------------- */}
         <div className="relative overflow-hidden rounded-[2.5rem] bg-slate-900 p-8 shadow-2xl flex flex-col border border-slate-800/50">
-          <div className="absolute inset-0 w-full h-full bg-slate-900 z-10 [mask-image:radial-gradient(transparent,white)] pointer-events-none" />
+          <div className="absolute top-0 left-0 w-[500px] h-[500px] bg-blue-600/10 blur-[100px] rounded-full pointer-events-none -translate-x-1/2 -translate-y-1/2" />
+          <div className="absolute bottom-0 right-0 w-[400px] h-[400px] bg-purple-600/10 blur-[100px] rounded-full pointer-events-none translate-x-1/3 translate-y-1/3" />
 
-          {/* 【同理】：右侧如果有 Boxes，也包起来 */}
-          <div className="absolute inset-0 z-0">
-            <ClientOnly>
-              <Boxes />
-            </ClientOnly>
-          </div>
-
-          <div className="relative z-20 pointer-events-none flex flex-col h-full">
+          <div className="relative z-20 flex flex-col h-full">
             <div className="mb-6 flex items-center justify-between pointer-events-auto">
               <h2 className="text-2xl font-bold tracking-tight text-white">
                 控制台
@@ -193,12 +180,10 @@ async function BookSections() {
       <section className="w-full grid grid-cols-1 lg:grid-cols-2 gap-10">
         {/* 左侧：已读区块 */}
         <div className="relative overflow-hidden rounded-[2.5rem] bg-slate-900 p-8 md:p-10 shadow-2xl">
-          <div className="absolute inset-0 w-full h-full bg-slate-900 z-10 [mask-image:radial-gradient(transparent,white)] pointer-events-none" />
-          <div className="absolute inset-0 z-0">
-            <Boxes />
-          </div>
+          <div className="absolute top-0 left-0 w-[500px] h-[500px] bg-blue-600/10 blur-[100px] rounded-full pointer-events-none -translate-x-1/2 -translate-y-1/2" />
+          <div className="absolute bottom-0 right-0 w-[400px] h-[400px] bg-purple-600/10 blur-[100px] rounded-full pointer-events-none translate-x-1/3 translate-y-1/3" />
 
-          <div className="relative z-20 pointer-events-none">
+          <div className="relative z-20 flex flex-col h-full">
             <div className="mb-8 flex items-center justify-between pointer-events-auto">
               <h2 className="text-2xl font-bold tracking-tight text-white">
                 已读
@@ -229,12 +214,10 @@ async function BookSections() {
 
         {/* 右侧：想读区块 */}
         <div className="relative overflow-hidden rounded-[2.5rem] bg-slate-900 p-8 md:p-10 shadow-2xl">
-          <div className="absolute inset-0 w-full h-full bg-slate-900 z-10 [mask-image:radial-gradient(transparent,white)] pointer-events-none" />
-          <div className="absolute inset-0 z-0">
-            <Boxes />
-          </div>
+          <div className="absolute top-0 left-0 w-[500px] h-[500px] bg-blue-600/10 blur-[100px] rounded-full pointer-events-none -translate-x-1/2 -translate-y-1/2" />
+          <div className="absolute bottom-0 right-0 w-[400px] h-[400px] bg-purple-600/10 blur-[100px] rounded-full pointer-events-none translate-x-1/3 translate-y-1/3" />
 
-          <div className="relative z-20 pointer-events-none">
+          <div className="relative z-20 flex flex-col h-full">
             <div className="mb-8 flex items-center justify-between pointer-events-auto">
               <h2 className="text-2xl font-bold tracking-tight text-white">
                 待读
@@ -272,33 +255,31 @@ async function BookSections() {
 // ==========================================
 export default function Home() {
   return (
-    <PageTransition>
-      <div className="relative pb-24 w-[90%] md:w-[80%] mx-auto flex flex-col items-center min-h-screen">
-        <div className="absolute top-8 right-0 z-50">
-          <AddBookDialog />
+    <div className="relative pb-24 w-[90%] md:w-[80%] mx-auto flex flex-col items-center min-h-screen">
+      <div className="absolute top-8 right-0 z-50">
+        <AddBookDialog />
+      </div>
+
+      {/* 顶部标题与格言区：没有任何阻塞，0.01秒瞬间显示！ */}
+      <header className="mt-20 mb-20 text-center w-full flex flex-col items-center relative z-10">
+        <div className="relative h-[120px] md:h-[160px] w-full max-w-3xl overflow-hidden flex justify-center items-center mb-2">
+          <VideoText src="https://cdn.magicui.design/ocean-small.webm">
+            图书馆
+          </VideoText>
         </div>
 
-        {/* 顶部标题与格言区：没有任何阻塞，0.01秒瞬间显示！ */}
-        <header className="mt-20 mb-20 text-center w-full flex flex-col items-center relative z-10">
-          <div className="relative h-[120px] md:h-[160px] w-full max-w-3xl overflow-hidden flex justify-center items-center mb-2">
-            <VideoText src="https://cdn.magicui.design/ocean-small.webm">
-              图书馆
-            </VideoText>
-          </div>
+        <div className="max-w-2xl px-4">
+          <SparklesText className="text-lg md:text-xl text-slate-400 italic font-serif leading-relaxed font-normal">
+            “我心里一直都在暗暗设想，天堂应该是图书馆的模样。”
+          </SparklesText>
+        </div>
+      </header>
 
-          <div className="max-w-2xl px-4">
-            <SparklesText className="text-lg md:text-xl text-slate-400 italic font-serif leading-relaxed font-normal">
-              “我心里一直都在暗暗设想，天堂应该是图书馆的模样。”
-            </SparklesText>
-          </div>
-        </header>
-
-        {/* 魔法发生的地方：用 Suspense 接管数据加载 */}
-        <Suspense fallback={<LibrarySkeleton />}>
-          {/* 在这里，Next.js 会去后台查数据库，查完之后自动替换掉骨架屏 */}
-          <BookSections />
-        </Suspense>
-      </div>
-    </PageTransition>
+      {/* 魔法发生的地方：用 Suspense 接管数据加载 */}
+      <Suspense fallback={<LibrarySkeleton />}>
+        {/* 在这里，Next.js 会去后台查数据库，查完之后自动替换掉骨架屏 */}
+        <BookSections />
+      </Suspense>
+    </div>
   );
 }
