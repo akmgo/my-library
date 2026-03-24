@@ -3,6 +3,8 @@
 
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { revalidatePath } from "next/cache";
+import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 // ================= 0. 【新增】获取所有书籍（带 KV 边缘缓存） =================
 export async function getAllBooks() {
@@ -270,6 +272,36 @@ export async function uploadCoverToR2(formData: FormData) {
     return { success: true, coverUrl };
   } catch (error: any) {
     console.error("上传封面失败:", error);
+    return { success: false, error: error.message };
+  }
+}
+
+// 新增这个向 R2 拿临时上传 URL 的方法
+export async function getPresignedUrl(fileName: string, contentType: string) {
+  try {
+    const { env } = await getCloudflareContext({ async: true });
+    // 这里的 env.R2_ACCOUNT_ID 等，就会自动读取你刚才在线上填的那些环境变量啦！
+    const S3 = new S3Client({
+      region: "auto",
+      endpoint: `https://${env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
+      credentials: {
+        accessKeyId: env.R2_ACCESS_KEY_ID as string,
+        secretAccessKey: env.R2_SECRET_ACCESS_KEY as string,
+      },
+    });
+
+    const uniqueFileName = `${Date.now()}-${fileName.replace(/\s+/g, '-')}`;
+    const command = new PutObjectCommand({
+      Bucket: env.R2_BUCKET_NAME as string,
+      Key: uniqueFileName,
+      ContentType: contentType,
+    });
+
+    const uploadUrl = await getSignedUrl(S3, command, { expiresIn: 300 });
+    const finalUrl = `${env.R2_PUBLIC_DOMAIN}/${uniqueFileName}`;
+
+    return { success: true, uploadUrl, finalUrl };
+  } catch (error: any) {
     return { success: false, error: error.message };
   }
 }

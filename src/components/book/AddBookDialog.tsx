@@ -1,7 +1,7 @@
 // src/components/book/AddBookDialog.tsx
 "use client";
 
-import { useState, useRef, useTransition } from "react";
+import { useState, useRef } from "react";
 import { Plus, Loader2, UploadCloud, Search, X } from "lucide-react";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
@@ -13,8 +13,8 @@ import {
   DialogTitle,
   DialogDescription,
 } from "../ui/dialog";
-// 【新增】：引入 uploadCoverToR2
-import { addBookToDB, searchBookByTitle, uploadCoverToR2 } from "../../app/actions";
+// 【修改】：去掉了 uploadCoverToR2，确保引入了 getPresignedUrl
+import { addBookToDB, searchBookByTitle, getPresignedUrl } from "../../app/actions";
 
 import { ShimmerButton } from "../ui/shimmer-button";
 import { BorderBeam } from "../ui/border-beam";
@@ -24,12 +24,10 @@ const DEFAULT_COVER = "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c
 export default function AddBookDialog() {
   const [open, setOpen] = useState(false);
   const [isSearching, setIsSearching] = useState(false); 
-  const [isPending, startTransition] = useTransition();
+  // 【核心修改 1】：用最稳妥的 useState 替代容易吞报错的 useTransition
+  const [isUploading, setIsUploading] = useState(false);
   
-  // 专门用来存用户选中的真实 File 文件对象，准备发给 R2
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  
-  // 用于 UI 上的本地快速预览（Base64 或 Blob URL）
   const [previewUrl, setPreviewUrl] = useState("");
 
   const titleRef = useRef<HTMLInputElement>(null);
@@ -60,10 +58,7 @@ export default function AddBookDialog() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // 1. 把真实的 File 对象存起来，留给 R2 上传用
     setSelectedFile(file);
-
-    // 2. 生成一个本地的高速预览链接，不卡顿
     const objectUrl = URL.createObjectURL(file);
     setPreviewUrl(objectUrl);
   };
@@ -73,50 +68,66 @@ export default function AddBookDialog() {
     setPreviewUrl("");
   };
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  // 【核心修改 2】：重构为企业级凭证直传逻辑
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (isPending) return;
+    if (isUploading) return;
 
     const formData = new FormData(e.currentTarget);
     const title = formData.get("title") as string;
     const author = formData.get("author") as string;
-    
     const formElement = e.currentTarget;
 
-    // 【体验核心】：点击确认瞬间，立刻关闭弹窗，假装已经保存完了！
-    setOpen(false); 
+    setIsUploading(true);
 
-    startTransition(async () => {
-      try {
-        let finalCoverUrl = DEFAULT_COVER;
+    try {
+      let finalCoverUrl = DEFAULT_COVER;
 
-        // 如果用户选了图片，先传给 R2
-        if (selectedFile) {
-          const uploadFormData = new FormData();
-          uploadFormData.append("file", selectedFile);
-          
-          const uploadRes = await uploadCoverToR2(uploadFormData);
-          
-          if (uploadRes.success && uploadRes.coverUrl) {
-            finalCoverUrl = uploadRes.coverUrl;
-          } else {
-            console.error("图片上传 R2 失败，将使用默认封面:", uploadRes.error);
-          }
-        }
-
-        // 把最终的清爽 URL 存进 D1 数据库
-        const result = await addBookToDB({ title, author, coverUrl: finalCoverUrl });
+      if (selectedFile) {
+        // 第一步：向服务器要 R2 临时直传通行证
+        const presignRes = await getPresignedUrl(selectedFile.name, selectedFile.type);
         
-        if (result.success) {
-          formElement.reset(); 
-          handleClearImage(); 
-        } else {
-          console.error("保存失败：" + result.error);
+        if (!presignRes.success || !presignRes.uploadUrl) {
+          alert("❌ 获取 R2 上传凭证失败: " + presignRes.error);
+          setIsUploading(false);
+          return;
         }
-      } catch (error) {
-        console.error("发生错误:", error);
+
+        // 第二步：前端浏览器直接把几兆的大图塞给 R2！(彻底解放 Next.js 内存)
+        const uploadResponse = await fetch(presignRes.uploadUrl, {
+          method: "PUT",
+          body: selectedFile,
+          headers: {
+            "Content-Type": selectedFile.type,
+          },
+        });
+
+        if (!uploadResponse.ok) {
+          throw new Error(`R2 拒绝了文件上传，状态码: ${uploadResponse.status}`);
+        }
+
+        // 拿到最终的干净图床链接
+        finalCoverUrl = presignRes.finalUrl;
       }
-    });
+
+      // 第三步：图片搞定，只把轻量级的文本信息存进 D1 数据库
+      const result = await addBookToDB({ title, author, coverUrl: finalCoverUrl });
+      
+      if (result.success) {
+        formElement.reset(); 
+        handleClearImage(); 
+        setOpen(false); 
+        
+        // 强制刷新页面，暴力打破缓存，新书绝对上墙！
+        window.location.reload(); 
+      } else {
+        alert("❌ 数据库保存失败：" + result.error);
+      }
+    } catch (error: any) {
+      alert("💥 发生致命异常: " + error.message);
+    } finally {
+      setIsUploading(false);
+    }
   };
 
   return (
@@ -230,11 +241,11 @@ export default function AddBookDialog() {
                 </Button>
                 <Button 
                   type="submit" 
-                  disabled={isPending}
+                  disabled={isUploading}
                   className="bg-slate-800 text-slate-200 border border-slate-700 hover:bg-slate-700 hover:text-white transition-colors"
                 >
-                  {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                  确认录入
+                  {isUploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                  {isUploading ? "正在录入..." : "确认录入"}
                 </Button>
               </div>
             </form>
