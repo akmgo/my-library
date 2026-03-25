@@ -192,7 +192,8 @@ function BookContent({ params }: { params: Promise<{ id: string }> }) {
                 alt={book.title}
                 fill
                 priority
-                crossOrigin="anonymous"
+                // ❌ 把下面这行代码彻彻底底地删掉！
+                // crossOrigin="anonymous" 
                 sizes="(max-width: 768px) 100vw, 33vw"
                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
                 unoptimized={coverUrl.startsWith("data:")}
