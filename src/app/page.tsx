@@ -7,10 +7,10 @@ import BookCard from "../components/book/BookCard";
 import AddBookDialog from "../components/book/AddBookDialog";
 import { VideoText } from "../components/ui/video-text";
 import { SparklesText } from "../components/ui/sparkles-text";
-import PageTransition from "../components/PageTransition";
 import ClientOnly from "../components/ClientOnly";
 import ReadingProgress from "../components/book/ReadingProgress";
 import BoomDecor from "../components/book/BoomDecor";
+import DashboardWidgets from "../components/dashboard/DashboardWidgets";
 
 export const dynamic = "force-dynamic";
 
@@ -67,9 +67,9 @@ async function BookSections() {
 
   return (
     <>
-      {/* ================= 2. 顶部双拼区块：在读 (50%) & 控制台 (50%) ================= */}
       {/* ================= 2. 顶部双拼区块：在读 & 控制台 ================= */}
       <section className="w-full grid grid-cols-1 xl:grid-cols-2 gap-10 mb-12">
+        
         {/* ---------------- 左半边 50%：当前在读区块 ---------------- */}
         <div className="relative overflow-hidden rounded-[2.5rem] bg-slate-900 p-8 md:p-10 shadow-2xl">
           <div className="absolute top-0 left-0 w-[500px] h-[500px] bg-blue-600/10 blur-[100px] rounded-full pointer-events-none -translate-x-1/2 -translate-y-1/2" />
@@ -88,9 +88,7 @@ async function BookSections() {
             <div className="flex-1 flex flex-col gap-6 pointer-events-auto">
               {readingBooks.length > 0 ? (
                 <>
-                  {/* 【上层 70%】：分左右 (60/40) */}
                   <div className="flex-[7] flex flex-col sm:flex-row items-stretch gap-6">
-                    {/* 书籍卡片 (纯静态 UI，服务端渲染没问题) */}
                     <div className="flex-[6] min-w-0">
                       <Link
                         href={`/books/${readingBooks[0].id}`}
@@ -103,7 +101,6 @@ async function BookSections() {
                       </Link>
                     </div>
 
-                    {/* 【性能优化 2】：进度条带有物理动画引擎，甩给客户端 */}
                     <div className="flex-[4] min-w-[200px]">
                       <ClientOnly
                         fallback={
@@ -115,7 +112,6 @@ async function BookSections() {
                     </div>
                   </div>
 
-                  {/* 【性能优化 3】：BOOM 装饰区，含有厚重渲染和变体，甩给客户端 */}
                   <div className="flex-[3] w-full">
                     <ClientOnly
                       fallback={
@@ -135,50 +131,32 @@ async function BookSections() {
           </div>
         </div>
 
-        {/* ---------------- 右半边 50%：控制台区块 ---------------- */}
-        <div className="relative overflow-hidden rounded-[2.5rem] bg-slate-900 p-8 shadow-2xl flex flex-col border border-slate-800/50">
+        {/* ---------------- 右半边 50%：控制台区块 (完美植入小组件) ---------------- */}
+        <div className="relative overflow-hidden rounded-[2.5rem] bg-slate-900 p-8 md:p-10 shadow-2xl flex flex-col border border-slate-800/50">
           <div className="absolute top-0 left-0 w-[500px] h-[500px] bg-blue-600/10 blur-[100px] rounded-full pointer-events-none -translate-x-1/2 -translate-y-1/2" />
           <div className="absolute bottom-0 right-0 w-[400px] h-[400px] bg-purple-600/10 blur-[100px] rounded-full pointer-events-none translate-x-1/3 translate-y-1/3" />
 
           <div className="relative z-20 flex flex-col h-full">
             <div className="mb-6 flex items-center justify-between pointer-events-auto">
               <h2 className="text-2xl font-bold tracking-tight text-white">
-                控制台
+                阅读看板
               </h2>
-              <span className="text-xs font-medium text-slate-500 border border-slate-700 bg-slate-800/30 px-3 py-1 rounded-full">
-                数据中心
+              <span className="text-xs font-medium text-indigo-400 border border-indigo-500/30 bg-indigo-500/10 px-3 py-1 rounded-full flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse"></span>
+                Live Data
               </span>
             </div>
 
-            <div className="flex-1 flex flex-col items-center justify-center pointer-events-auto bg-slate-900/30 rounded-3xl border border-slate-800/50 border-dashed p-6 group transition-colors hover:bg-slate-800/30">
-              <div className="text-center space-y-4">
-                <div className="w-16 h-16 rounded-2xl bg-slate-800/50 flex items-center justify-center mx-auto transition-transform group-hover:scale-110 duration-500">
-                  <svg
-                    className="w-8 h-8 text-slate-500 group-hover:text-blue-400 transition-colors"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={1.5}
-                      d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
-                    />
-                  </svg>
-                </div>
-                <h3 className="text-slate-300 font-medium tracking-wide">
-                  数据看板预留
-                </h3>
-              </div>
+            {/* 🚀 直接在这里召唤你的小组件组合！无缝融入！ */}
+            <div className="flex-1 pointer-events-auto w-full flex flex-col justify-center">
+              <DashboardWidgets />
             </div>
           </div>
         </div>
       </section>
 
-      {/* 已读 & 待读区块 */}
+      {/* 已读 & 待读区块 (保持不变) */}
       <section className="w-full grid grid-cols-1 lg:grid-cols-2 gap-10">
-        {/* 左侧：已读区块 */}
         <div className="relative overflow-hidden rounded-[2.5rem] bg-slate-800/30 backdrop-blur-xl p-8 md:p-10 shadow-2xl border border-white/10 flex flex-col hover:bg-slate-800/40 transition-colors duration-500">
           <div className="absolute top-0 left-0 w-[500px] h-[500px] bg-blue-500/20 blur-[100px] rounded-full pointer-events-none -translate-x-1/2 -translate-y-1/2" />
           <div className="absolute bottom-0 right-0 w-[400px] h-[400px] bg-purple-500/20 blur-[100px] rounded-full pointer-events-none translate-x-1/3 translate-y-1/3" />
@@ -203,16 +181,10 @@ async function BookSections() {
                   <BookCard book={book} />
                 </Link>
               ))}
-              {finishedBooks.length === 0 && (
-                <div className="col-span-full py-8 text-center text-slate-400 text-sm pointer-events-auto">
-                  还没有读完的书籍
-                </div>
-              )}
             </div>
           </div>
         </div>
 
-        {/* 右侧：想读区块 */}
         <div className="relative overflow-hidden rounded-[2.5rem] bg-slate-800/30 backdrop-blur-xl p-8 md:p-10 shadow-2xl border border-white/10 flex flex-col hover:bg-slate-800/40 transition-colors duration-500">
           <div className="absolute top-0 left-0 w-[500px] h-[500px] bg-blue-500/20 blur-[100px] rounded-full pointer-events-none -translate-x-1/2 -translate-y-1/2" />
           <div className="absolute bottom-0 right-0 w-[400px] h-[400px] bg-purple-500/20 blur-[100px] rounded-full pointer-events-none translate-x-1/3 translate-y-1/3" />
@@ -237,11 +209,6 @@ async function BookSections() {
                   <BookCard book={book} />
                 </Link>
               ))}
-              {unreadBooks.length === 0 && (
-                <div className="col-span-full py-8 text-center text-slate-400 text-sm pointer-events-auto">
-                  书单目前空空如也
-                </div>
-              )}
             </div>
           </div>
         </div>
@@ -260,7 +227,6 @@ export default function Home() {
         <AddBookDialog />
       </div>
 
-      {/* 顶部标题与格言区：没有任何阻塞，0.01秒瞬间显示！ */}
       <header className="mt-20 mb-20 text-center w-full flex flex-col items-center relative z-10">
         <div className="relative h-[120px] md:h-[160px] w-full max-w-3xl overflow-hidden flex justify-center items-center mb-2">
           <VideoText src="https://cdn.magicui.design/ocean-small.webm">
@@ -275,9 +241,7 @@ export default function Home() {
         </div>
       </header>
 
-      {/* 魔法发生的地方：用 Suspense 接管数据加载 */}
       <Suspense fallback={<LibrarySkeleton />}>
-        {/* 在这里，Next.js 会去后台查数据库，查完之后自动替换掉骨架屏 */}
         <BookSections />
       </Suspense>
     </div>
