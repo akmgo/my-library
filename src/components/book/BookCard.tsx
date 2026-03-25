@@ -1,7 +1,7 @@
 // src/components/book/BookCard.tsx
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState,useRef } from 'react';
 import { Calendar, Clock, Star, BookOpen } from 'lucide-react';
 import Image from "next/image";
 
@@ -19,7 +19,29 @@ export interface Book {
 
 export default function BookCard({ book }: { book: Book }) {
   const [isLoaded, setIsLoaded] = useState(false);
+
+  const [dominantColor, setDominantColor] = useState<string | null>(null);
+  const imgRef = useRef<HTMLImageElement>(null);
+
   const cover = book.coverUrl || "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?q=80&w=1000&auto=format&fit=crop";
+
+
+  const handleImageLoad = async () => {
+    setIsLoaded(true);
+    if (imgRef.current && !cover.startsWith('data:')) {
+      try {
+        const ColorThiefModule = await import('colorthief');
+        const ColorThief = ColorThiefModule.default as any;
+
+        const colorThief = new ColorThief();
+        const color = colorThief.getColor(imgRef.current);
+        // 转换成 rgb 格式存起来
+        setDominantColor(`rgb(${color[0]}, ${color[1]}, ${color[2]})`);
+      } catch (e) {
+        console.log("取色失败", e);
+      }
+    }
+  };
 
   // 极简状态胶囊 (去掉了复杂的阴影和动画，改用纯色+细边框)
   const renderStatusPill = () => {
@@ -49,7 +71,14 @@ export default function BookCard({ book }: { book: Book }) {
 
   return (
     // 【优化1】：移除 backdrop-blur，改用纯背景色 bg-slate-900，极大减轻 GPU 负担
-    <div className="group relative flex flex-col w-full rounded-2xl overflow-hidden bg-slate-900 border border-slate-800 transition-transform duration-300 hover:-translate-y-1 hover:border-slate-600 hover:shadow-2xl cursor-pointer">
+    <div 
+    className="group relative flex flex-col w-full rounded-2xl overflow-hidden bg-slate-900 border border-slate-800 transition-transform duration-300 hover:-translate-y-1 hover:border-slate-600 hover:shadow-2xl cursor-pointer"
+    style={{
+      // 如果取到了色，就用动态色作为悬浮时的阴影和边框高光
+      boxShadow: dominantColor ? `0 20px 40px -15px ${dominantColor}` : '',
+      borderColor: dominantColor ? `color-mix(in srgb, ${dominantColor} 40%, transparent)` : ''
+    }}
+    >
       
       <div className="w-full aspect-video overflow-hidden relative bg-slate-950 flex items-center justify-center">
         
@@ -60,11 +89,13 @@ export default function BookCard({ book }: { book: Book }) {
 
         {/* 【优化3】：用纯 CSS 的 opacity 过渡替代 blur，丝滑且不掉帧 */}
         <Image 
+          ref={imgRef as any}
           src={cover} 
           alt={book.title} 
           fill
           sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-          onLoad={() => setIsLoaded(true)}
+          crossOrigin="anonymous" // 极其重要：跨域取色必备
+          onLoadingComplete={handleImageLoad} // Next.js Image 推荐用这个
           className={`
             object-cover transition-all duration-500 ease-in-out z-10
             ${isLoaded ? "opacity-100 transform group-hover:scale-105" : "opacity-0 scale-100"}

@@ -1,7 +1,7 @@
 // src/app/books/[id]/page.tsx
 "use client";
 
-import { useState, useEffect, use, Suspense } from "react";
+import { useState, useEffect, use, Suspense,useRef } from "react";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -84,6 +84,9 @@ function BookContent({ params }: { params: Promise<{ id: string }> }) {
 
   const router = useRouter();
 
+  const [dominantColor, setDominantColor] = useState<string | null>(null);
+  const imgRef = useRef<HTMLImageElement>(null);
+
   // 初始化拉取数据
   const fetchBookData = async () => {
     const res = await getBookDetail(id);
@@ -107,6 +110,20 @@ function BookContent({ params }: { params: Promise<{ id: string }> }) {
       dbUpdates.tags = JSON.stringify(dbUpdates.tags);
     }
     await updateBook(id, dbUpdates);
+  };
+
+  const handleCoverLoad = async () => {
+    if (imgRef.current && book?.coverUrl && !book.coverUrl.startsWith('data:')) {
+      try {
+        const ColorThiefModule = await import('colorthief');
+        const ColorThief = ColorThiefModule.default as any;
+        const colorThief = new ColorThief();
+        const color = colorThief.getColor(imgRef.current);
+        setDominantColor(`rgb(${color[0]}, ${color[1]}, ${color[2]})`);
+      } catch (e) {
+        console.log("取色失败", e);
+      }
+    }
   };
 
   const toggleTag = (tag: string) => {
@@ -137,6 +154,7 @@ function BookContent({ params }: { params: Promise<{ id: string }> }) {
       </div>
     );
   }
+  
 
   const coverUrl =
     book.coverUrl ||
@@ -144,7 +162,20 @@ function BookContent({ params }: { params: Promise<{ id: string }> }) {
 
   return (
     <PageTransition>
-      <div className="relative min-h-screen w-full max-w-7xl mx-auto px-6 md:px-12 pt-24 pb-32">
+      {/* 👇 新增：在这个 relative 的容器里，画出两个巨大的动态光圈 */}
+      <div className="relative min-h-screen w-full overflow-hidden">
+        
+        {/* ================= 魔法光晕层 ================= */}
+        <div 
+          className="absolute top-[-10%] left-[-10%] h-[800px] w-[800px] rounded-full blur-[150px] opacity-20 pointer-events-none transition-colors duration-1000 ease-out"
+          style={{ backgroundColor: dominantColor || 'rgba(99, 102, 241, 0.2)' }}
+        />
+        <div 
+          className="absolute bottom-[-10%] right-[-10%] h-[600px] w-[600px] rounded-full blur-[120px] opacity-10 pointer-events-none transition-colors duration-1000 ease-out"
+          style={{ backgroundColor: dominantColor || 'rgba(168, 85, 247, 0.1)' }}
+        />
+        {/* ============================================== */}
+        <div className="relative z-10 min-h-screen w-full max-w-7xl mx-auto px-6 md:px-12 pt-24 pb-32">
         <button
           onClick={() => router.back()}
           className="inline-flex items-center text-slate-400 hover:text-white mb-10 transition-colors group"
@@ -159,10 +190,13 @@ function BookContent({ params }: { params: Promise<{ id: string }> }) {
           {/* ================= 左侧：书籍元数据 ================= */}
           <div className="lg:col-span-4 flex flex-col space-y-6">
             <div className="w-full aspect-video rounded-2xl overflow-hidden shadow-2xl border border-slate-800 relative group">
-              <Image
+            <Image
+                ref={imgRef as any} // 👈 新增
                 src={coverUrl}
                 alt={book.title}
                 fill
+                crossOrigin="anonymous" // 👈 新增跨域权限
+                onLoadingComplete={handleCoverLoad} // 👈 新增加载完成的取色触发
                 sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
                 unoptimized={coverUrl.startsWith("data:")}
@@ -392,6 +426,7 @@ function BookContent({ params }: { params: Promise<{ id: string }> }) {
               )}
             </div>
           </div>
+        </div>
         </div>
       </div>
     </PageTransition>
