@@ -22,8 +22,12 @@ export default function BookCard({ book }: { book: Book }) {
   const rawCover =
     book.coverUrl ||
     "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?q=80&w=1000&auto=format&fit=crop";
-  const cover = rawCover.startsWith("data:") ? rawCover : `${rawCover}?cors=1`;
-
+  // 🚀 替换为这个终极边缘压缩版本：
+  // 魔法说明：如果是 R2 图床的链接，我们用 wsrv.nl 代理，
+  // 强制转换宽度 (w=400)，压缩质量 (q=80)，并输出目前体积最小的 webp 格式 (output=webp)
+  const cover = rawCover.startsWith('data:') 
+    ? rawCover 
+    : `https://wsrv.nl/?url=${encodeURIComponent(rawCover)}&w=400&q=80&output=webp`;
   // 极简状态胶囊 (摒弃耗性能的毛玻璃，使用纯色)
   const renderStatusPill = () => {
     switch (book.status) {

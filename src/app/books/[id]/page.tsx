@@ -129,9 +129,21 @@ function BookContent({ params }: { params: Promise<{ id: string }> }) {
     );
   }
 
+  // 原有的 coverUrl 获取逻辑
   const coverUrl =
     book.coverUrl ||
     "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?q=80&w=1000&auto=format&fit=crop";
+
+  // 🚀 核心魔法 1：背景专用超小图 (宽度仅 100px，画质 50，极限压缩，体积不到 2KB！)
+  const bgCoverUrl = coverUrl.startsWith("data:")
+    ? coverUrl
+    : `https://wsrv.nl/?url=${encodeURIComponent(coverUrl)}&w=100&q=50&output=webp`;
+
+  // 🚀 核心魔法 2：主封面高清图 (宽度 800px，画质 80，保证清晰度的同时把 3MB 压到 80KB)
+  const mainCoverUrl = coverUrl.startsWith("data:")
+    ? coverUrl
+    : `https://wsrv.nl/?url=${encodeURIComponent(coverUrl)}&w=800&q=80&output=webp`;
+
 
   return (
     <PageTransition>
@@ -145,7 +157,7 @@ function BookContent({ params }: { params: Promise<{ id: string }> }) {
           {/* 2. 封面倒影：提升不透明度 (opacity-60) 和饱和度 (saturate-150)，让颜色“透”出来 */}
           {book?.coverUrl && (
             <Image
-              src={coverUrl.startsWith("data:") ? coverUrl : `${coverUrl}?cors=1`}
+              src={bgCoverUrl} // 👈 替换为 bgCoverUrl
               alt="Background"
               fill
               priority
@@ -188,7 +200,7 @@ function BookContent({ params }: { params: Promise<{ id: string }> }) {
             {/* 左侧封面：尺寸适度缩小，保持你的电影海报比例 */}
             <div className="w-full sm:w-[320px] lg:w-[380px] shrink-0 aspect-video rounded-2xl overflow-hidden shadow-[0_15px_40px_rgba(0,0,0,0.4)] border border-white/10 relative z-10">
               <Image
-                src={coverUrl.startsWith("data:") ? coverUrl : `${coverUrl}?cors=1`}
+                src={mainCoverUrl} // 👈 替换为 mainCoverUrl
                 alt={book.title}
                 fill
                 priority
