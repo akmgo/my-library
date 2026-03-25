@@ -57,10 +57,7 @@ export default function BookCard({ book }: { book: Book }) {
     >
       
       {/* 封面区域 */}
-      <motion.div 
-        layoutId={`book-cover-${book.id}`} // 👈 共享元素的暗号！
-        className={`w-full aspect-video overflow-hidden relative bg-slate-950 flex items-center justify-center ${!isLoaded ? "animate-pulse" : ""}`}
-      >
+      <div className={`w-full aspect-video overflow-hidden relative bg-slate-950 flex items-center justify-center ${!isLoaded ? "animate-pulse" : ""}`}>
         
         {!isLoaded && (
           <BookOpen className="w-8 h-8 text-slate-700" />
@@ -79,12 +76,13 @@ export default function BookCard({ book }: { book: Book }) {
           unoptimized={cover.startsWith('data:')}
         />
         
+        {/* 顶部极简遮罩，用于衬托状态标签 */}
         <div className="absolute inset-0 bg-gradient-to-b from-slate-950/60 to-transparent h-1/3 z-10 pointer-events-none"></div>
         
         <div className="absolute top-3 right-3 z-20">
           {renderStatusPill()}
         </div>
-      </motion.div>
+      </div>
 
       {/* 文本信息区 */}
       <div className="flex flex-col p-5 flex-1 bg-slate-900">

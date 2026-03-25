@@ -54,7 +54,7 @@ export default function AddExcerptDialog({
       {/* 🚀 修复点：彻底去掉 ShimmerButton 嵌套，直接使用清爽的玻璃拟态 button */}
       <button
         onClick={() => setOpen(true)}
-        className="inline-flex items-center justify-center gap-2 px-5 py-2.5 text-sm font-medium rounded-full bg-white/5 border border-white/10 backdrop-blur-md transition-all duration-300 hover:bg-indigo-500/20 hover:border-indigo-500/40 hover:shadow-[0_0_20px_rgba(79,70,229,0.3)] hover:-translate-y-0.5 active:scale-95 text-slate-300 hover:text-indigo-300 group"
+        className="inline-flex items-center justify-center gap-2 px-5 py-2.5 text-sm font-medium rounded-full bg-white/10 border border-white/10 transition duration-300 hover:bg-red-500/15 hover:border-red-500/30 hover:shadow-[0_0_20px_rgba(239,68,68,0.2)] hover:-translate-y-0.5 active:scale-95 text-slate-300 hover:text-red-400 group"
       >
         <Plus className="w-4 h-4 group-hover:rotate-90 transition-transform duration-300" />
         添加摘录

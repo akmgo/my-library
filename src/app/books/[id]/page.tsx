@@ -166,9 +166,10 @@ function BookContent({ params }: { params: Promise<{ id: string }> }) {
         <div className="relative z-10 w-full max-w-5xl mx-auto px-6 md:px-12 pt-20 pb-32 flex flex-col">
           {/* ================= 顶部控制栏 (统一玻璃拟态按钮) ================= */}
           <div className="flex items-center justify-between mb-10 md:mb-16">
-            <button
+          <button
               onClick={() => router.back()}
-              className="inline-flex items-center justify-center gap-2 px-5 py-2.5 text-sm font-medium rounded-full bg-white/5 border border-white/10 backdrop-blur-md transition-all duration-300 hover:bg-white/10 hover:border-white/20 hover:shadow-[0_0_20px_rgba(255,255,255,0.1)] hover:-translate-y-0.5 active:scale-95 text-slate-300 hover:text-white group"
+              // 🚀 魔法：去掉了 backdrop-blur-md，把 bg-white/5 提亮到了 bg-white/10，并且把 transition-all 换成了更精准的 transition
+              className="inline-flex items-center justify-center gap-2 px-5 py-2.5 text-sm font-medium rounded-full bg-white/10 border border-white/10 transition duration-300 hover:bg-white/20 hover:border-white/20 hover:shadow-[0_0_20px_rgba(255,255,255,0.1)] hover:-translate-y-0.5 active:scale-95 text-slate-300 hover:text-white group"
             >
               <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
               返回书架
@@ -184,10 +185,7 @@ function BookContent({ params }: { params: Promise<{ id: string }> }) {
             <div className="absolute -top-32 -right-32 w-[500px] h-[500px] bg-indigo-500/10 rounded-full blur-[100px] pointer-events-none group-hover:bg-indigo-500/20 transition-colors duration-1000"></div>
 
             {/* 左侧封面：尺寸适度缩小，保持你的电影海报比例 */}
-            <motion.div 
-              layoutId={`book-cover-${id}`} // 👈 必须和首页的暗号完全一致！
-              className="w-full sm:w-[320px] lg:w-[380px] shrink-0 aspect-video rounded-2xl overflow-hidden shadow-[0_15px_40px_rgba(0,0,0,0.4)] border border-white/10 relative z-10"
-            >
+            <div className="w-full sm:w-[320px] lg:w-[380px] shrink-0 aspect-video rounded-2xl overflow-hidden shadow-[0_15px_40px_rgba(0,0,0,0.4)] border border-white/10 relative z-10">
               <Image
                 src={coverUrl.startsWith("data:") ? coverUrl : `${coverUrl}?cors=1`}
                 alt={book.title}
@@ -197,7 +195,7 @@ function BookContent({ params }: { params: Promise<{ id: string }> }) {
                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
                 unoptimized={coverUrl.startsWith("data:")}
               />
-            </motion.div>
+            </div>
 
             {/* 右侧信息区：弹性布局填满剩余空间 */}
             <div className="flex flex-col flex-1 w-full relative z-10 py-2 lg:py-6">
