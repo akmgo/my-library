@@ -136,26 +136,30 @@ function BookContent({ params }: { params: Promise<{ id: string }> }) {
   return (
     <PageTransition>
       <div className="relative min-h-screen w-full bg-slate-950 overflow-hidden text-slate-200">
-        {/* ================= 背景层：重现呼吸感极光特效 ================= */}
+        {/* ================= 背景层：调优后的深邃极光特效 ================= */}
         <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
-          {/* 1. 保底环境光：加入两个微弱的紫蓝色极光球，保证即使图片没加载也有高级感 */}
-          <div className="absolute top-[-10%] left-[-10%] w-[60%] h-[60%] bg-indigo-600/10 blur-[120px] rounded-full mix-blend-screen" />
-          <div className="absolute bottom-[-10%] right-[-10%] w-[60%] h-[60%] bg-purple-600/10 blur-[120px] rounded-full mix-blend-screen" />
+          {/* 1. 保底环境光：稍微加深了一点基础颜色，让黑夜不再死寂 */}
+          <div className="absolute top-[-20%] left-[-10%] w-[70%] h-[70%] bg-indigo-500/15 blur-[120px] rounded-full mix-blend-screen" />
+          <div className="absolute bottom-[-10%] right-[-20%] w-[70%] h-[70%] bg-purple-500/15 blur-[120px] rounded-full mix-blend-screen" />
 
-          {/* 2. 封面倒影：放大尺寸，提高透明度让光透出来 */}
+          {/* 2. 封面倒影：提升不透明度 (opacity-60) 和饱和度 (saturate-150)，让颜色“透”出来 */}
           {book?.coverUrl && (
             <Image
               src={coverUrl.startsWith("data:") ? coverUrl : `${coverUrl}?cors=1`}
               alt="Background"
               fill
-              className="object-cover scale-[1.5] blur-[100px] opacity-50 saturate-[1.2] animate-in fade-in duration-1000"
+              className="object-cover scale-[1.3] blur-[100px] opacity-60 saturate-[1.5] animate-in fade-in duration-1000"
               unoptimized={true}
             />
           )}
-          {/* 3. 玻璃遮罩：去掉了厚重的 backdrop-blur，改用带色彩混合的普通半透明，让底光能“透”上来 */}
-          <div className="absolute inset-0 bg-slate-950/60 mix-blend-multiply"></div>
-          {/* 4. 底部渐变变黑：确保摘录区文字绝对清晰 */}
-          <div className="absolute inset-0 bg-gradient-to-b from-transparent via-slate-950/80 to-slate-950"></div>
+          
+          {/* 3. 核心魔法遮罩：改用 overlay 混合模式，这会让暗部更暗，亮部（极光）更亮，绝不灰白！ */}
+          <div className="absolute inset-0 bg-slate-900/60 mix-blend-overlay"></div>
+          {/* 再叠加一层纯色半透明，确保文字对比度足够深 */}
+          <div className="absolute inset-0 bg-slate-950/40"></div>
+          
+          {/* 4. 底部黑场过渡：让摘录区彻底沉降到深邃背景中 */}
+          <div className="absolute inset-0 bg-gradient-to-b from-transparent via-slate-950/70 to-slate-950"></div>
         </div>
 
         {/* ================= 内容层 (最大宽度缩小到 5xl，让排版更紧凑高级) ================= */}
@@ -294,11 +298,9 @@ function BookContent({ params }: { params: Promise<{ id: string }> }) {
                 <Star className="w-4 h-4" /> 个人评价
               </label>
               
-              {/* 评价容器：改为 Flex 横向铺满，并加入右侧渐变暗光 */}
               <div className="flex items-center bg-slate-950/40 p-4 md:p-5 rounded-2xl border border-slate-700/50 relative overflow-hidden group">
                 
-                {/* 装饰 1：右侧氛围背景光 */}
-                <div className="absolute right-0 top-0 bottom-0 w-48 bg-gradient-to-l from-yellow-500/5 to-transparent pointer-events-none"></div>
+                <div className="absolute right-0 top-0 bottom-0 w-48 bg-gradient-to-l from-yellow-500/10 to-transparent pointer-events-none transition-opacity duration-300"></div>
 
                 <div className="flex gap-2 relative z-10 shrink-0" onMouseLeave={() => setHoverRating(0)}>
                   {[1, 2, 3, 4, 5].map((star) => {
@@ -318,16 +320,29 @@ function BookContent({ params }: { params: Promise<{ id: string }> }) {
                   })}
                 </div>
                 
-                {/* 评价文字：宽度加到 w-56 保证绝对不换行，左侧留出间距 */}
                 <div className="ml-6 w-56 relative z-10 shrink-0">
                   <span className="text-lg md:text-xl font-bold text-yellow-400 drop-shadow-md transition-all">
                     {RATING_TEXTS[hoverRating || book.rating]}
                   </span>
                 </div>
 
-                {/* 装饰 2：右侧极简水印填充空白（大厂经典设计） */}
-                <div className="ml-auto relative z-10 flex items-center justify-center pr-4">
-                  <Sparkles className="w-8 h-8 text-yellow-500/10 group-hover:text-yellow-500/30 transition-colors duration-500 rotate-12" />
+                {/* 🚀 动态繁星装饰：右侧极简水印，根据当前星数动态渲染 */}
+                <div className="ml-auto relative z-10 flex items-center justify-end gap-1 pr-4 w-32">
+                  {[1, 2, 3, 4, 5].map((starIndex) => {
+                    const currentRating = hoverRating || book.rating || 0;
+                    // 只有当索引小于等于当前星数时，才渲染星标
+                    if (starIndex <= currentRating) {
+                      return (
+                        <Sparkles 
+                          key={`sparkle-${starIndex}`}
+                          // 加入 stagger 延迟动画，星数越多，出现的动画越有层次感
+                          className="w-5 h-5 text-yellow-500/30 group-hover:text-yellow-500/50 animate-in fade-in zoom-in spin-in-12 duration-500"
+                          style={{ animationDelay: `${starIndex * 50}ms` }}
+                        />
+                      );
+                    }
+                    return null;
+                  })}
                 </div>
 
               </div>
