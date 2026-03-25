@@ -184,7 +184,10 @@ function BookContent({ params }: { params: Promise<{ id: string }> }) {
             <div className="absolute -top-32 -right-32 w-[500px] h-[500px] bg-indigo-500/10 rounded-full blur-[100px] pointer-events-none group-hover:bg-indigo-500/20 transition-colors duration-1000"></div>
 
             {/* 左侧封面：尺寸适度缩小，保持你的电影海报比例 */}
-            <div className="w-full sm:w-[320px] lg:w-[380px] shrink-0 aspect-video rounded-2xl overflow-hidden shadow-[0_15px_40px_rgba(0,0,0,0.4)] border border-white/10 relative z-10">
+            <motion.div 
+              layoutId={`book-cover-${id}`} // 👈 必须和首页的暗号完全一致！
+              className="w-full sm:w-[320px] lg:w-[380px] shrink-0 aspect-video rounded-2xl overflow-hidden shadow-[0_15px_40px_rgba(0,0,0,0.4)] border border-white/10 relative z-10"
+            >
               <Image
                 src={coverUrl.startsWith("data:") ? coverUrl : `${coverUrl}?cors=1`}
                 alt={book.title}
@@ -194,7 +197,7 @@ function BookContent({ params }: { params: Promise<{ id: string }> }) {
                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
                 unoptimized={coverUrl.startsWith("data:")}
               />
-            </div>
+            </motion.div>
 
             {/* 右侧信息区：弹性布局填满剩余空间 */}
             <div className="flex flex-col flex-1 w-full relative z-10 py-2 lg:py-6">
