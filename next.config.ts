@@ -1,16 +1,21 @@
 import type { NextConfig } from "next";
-// 【加回来的核心代码】：引入 Cloudflare 本地开发环境初始化函数
 import { initOpenNextCloudflareForDev } from "@opennextjs/cloudflare";
 
-// 启动本地 Cloudflare 绑定的代理服务 (就是它解决了那个 C++ 报错)
-initOpenNextCloudflareForDev();
+// 🛡️ 防火墙 1：只在本地开发时启动模拟环境
+if (process.env.NODE_ENV === "development") {
+  initOpenNextCloudflareForDev();
+}
 
 const nextConfig: NextConfig = {
+  // 👇 把它挪到这里！它是顶级配置，不再是实验性功能了
+  serverExternalPackages: ["sharp"],
+
   experimental: {
     serverActions: {
-      bodySizeLimit: "10mb", // 把限制放宽到 5MB（你也可以改成 10mb）
+      bodySizeLimit: "10mb", 
     },
   },
+  
   images: {
     unoptimized: true,
     remotePatterns: [
