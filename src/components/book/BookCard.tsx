@@ -23,8 +23,9 @@ export default function BookCard({ book }: { book: Book }) {
   const [dominantColor, setDominantColor] = useState<string | null>(null);
   const imgRef = useRef<HTMLImageElement>(null);
 
-  const cover = book.coverUrl || "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?q=80&w=1000&auto=format&fit=crop";
-
+  // 👇 加上 ?cors=1 强制击穿缓存，获取带有 CORS 请求头的新图片！
+  const rawCover = book.coverUrl || "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?q=80&w=1000&auto=format&fit=crop";
+  const cover = rawCover.startsWith('data:') ? rawCover : `${rawCover}?cors=1`;
 
   const handleImageLoad = async () => {
     setIsLoaded(true);

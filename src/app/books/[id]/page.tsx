@@ -1,7 +1,7 @@
 // src/app/books/[id]/page.tsx
 "use client";
 
-import { useState, useEffect, use, Suspense,useRef } from "react";
+import { useState, useEffect, use, Suspense, useRef } from "react";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -113,9 +113,13 @@ function BookContent({ params }: { params: Promise<{ id: string }> }) {
   };
 
   const handleCoverLoad = async () => {
-    if (imgRef.current && book?.coverUrl && !book.coverUrl.startsWith('data:')) {
+    if (
+      imgRef.current &&
+      book?.coverUrl &&
+      !book.coverUrl.startsWith("data:")
+    ) {
       try {
-        const ColorThiefModule = (await import('colorthief')) as any;
+        const ColorThiefModule = (await import("colorthief")) as any;
         const ColorThief = ColorThiefModule.default || ColorThiefModule;
         const colorThief = new ColorThief();
         const color = colorThief.getColor(imgRef.current);
@@ -154,7 +158,6 @@ function BookContent({ params }: { params: Promise<{ id: string }> }) {
       </div>
     );
   }
-  
 
   const coverUrl =
     book.coverUrl ||
@@ -164,269 +167,300 @@ function BookContent({ params }: { params: Promise<{ id: string }> }) {
     <PageTransition>
       {/* 👇 新增：在这个 relative 的容器里，画出两个巨大的动态光圈 */}
       <div className="relative min-h-screen w-full overflow-hidden">
-        
-        {/* ================= 魔法光晕层 ================= */}
-        <div 
-          className="absolute top-[-10%] left-[-10%] h-[800px] w-[800px] rounded-full blur-[150px] opacity-20 pointer-events-none transition-colors duration-1000 ease-out"
-          style={{ backgroundColor: dominantColor || 'rgba(99, 102, 241, 0.2)' }}
+        {/* ================= 魔法光晕层 (大厂级沉浸弥散极光特效) ================= */}
+        {/* 1. 第一层：巨大的环境光底色 */}
+        {/* 魔法：我们大幅增加不透明度 (opacity: 0.35)，使用径向渐变，并且不在这里使用 blur */}
+        <div
+          className="absolute top-[-20%] left-[-20%] h-[120%] w-[120%] transition-all duration-1000 ease-out pointer-events-none"
+          style={{
+            background: dominantColor
+              ? `radial-gradient(circle at 40% 30%, ${dominantColor} 0%, rgba(15, 23, 42, 0) 60%)`
+              : "radial-gradient(circle at 40% 30%, rgba(99, 102, 241, 0.2) 0%, rgba(15, 23, 42, 0) 60%)",
+            opacity: 0.35, // 提高基础不透明度，让颜色显现
+          }}
         />
-        <div 
-          className="absolute bottom-[-10%] right-[-10%] h-[600px] w-[600px] rounded-full blur-[120px] opacity-10 pointer-events-none transition-colors duration-1000 ease-out"
-          style={{ backgroundColor: dominantColor || 'rgba(168, 85, 247, 0.1)' }}
+
+        {/* 2. 第二层：核心高亮弥散光 (极光核心) */}
+        {/* 魔法核心：filter: 'blur(150px)' 加上 mixBlendMode: 'screen' (滤色模式) */}
+        {/* 滤色模式会让深色背景完全透过来，只把提取出的颜色“光”叠加在上面，极其显色且高级！ */}
+        <div
+          className="absolute top-0 left-[-10%] h-[800px] w-[800px] rounded-full transition-all duration-1000 ease-out pointer-events-none"
+          style={{
+            backgroundColor: dominantColor || "rgba(168, 85, 247, 0.1)",
+            filter: "blur(150px)", // 大模糊
+            opacity: 0.25, // 这里保持半透明，增加层次感
+            mixBlendMode: "screen", // ✅ 终极魔法：滤色混合模式，让颜色在深色背景上发光
+          }}
         />
-        {/* ============================================== */}
+
+        {/* 3. 第三层：增加暖色调的环境光，让整体氛围更柔和 (可选) */}
+        <div
+          className="absolute bottom-[-10%] right-[-10%] h-[600px] w-[600px] rounded-full transition-all duration-1000 ease-out pointer-events-none"
+          style={{
+            backgroundColor: dominantColor || "rgba(168, 85, 247, 0.1)",
+            filter: "blur(120px)",
+            opacity: 0.15,
+            mixBlendMode: "plus-lighter", // 让光叠加
+          }}
+        />
+        {/* ========================================================================= */}
         <div className="relative z-10 min-h-screen w-full max-w-7xl mx-auto px-6 md:px-12 pt-24 pb-32">
-        <button
-          onClick={() => router.back()}
-          className="inline-flex items-center text-slate-400 hover:text-white mb-10 transition-colors group"
-        >
-          <ArrowLeft className="w-4 h-4 mr-2 group-hover:-translate-x-1 transition-transform" />
-          返回书房
-        </button>
+          <button
+            onClick={() => router.back()}
+            className="inline-flex items-center text-slate-400 hover:text-white mb-10 transition-colors group"
+          >
+            <ArrowLeft className="w-4 h-4 mr-2 group-hover:-translate-x-1 transition-transform" />
+            返回书房
+          </button>
 
-        {book && <DeleteBookButton bookId={id} title={book.title} />}
+          {book && <DeleteBookButton bookId={id} title={book.title} />}
 
-        <div className="grid grid-cols-1 lg:grid-cols-10 gap-16 lg:gap-24 mt-6">
-          {/* ================= 左侧：书籍元数据 ================= */}
-          <div className="lg:col-span-4 flex flex-col space-y-6">
-            <div className="w-full aspect-video rounded-2xl overflow-hidden shadow-2xl border border-slate-800 relative group">
-            <Image
-                ref={imgRef as any} // 👈 新增
-                src={coverUrl}
-                alt={book.title}
-                fill
-                crossOrigin="anonymous" // 👈 新增跨域权限
-                onLoad={handleCoverLoad} // 👈 新增加载完成的取色触发
-                sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
-                unoptimized={coverUrl.startsWith("data:")}
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-transparent to-transparent opacity-60" />
-            </div>
-
-            <div>
-              <h1 className="text-3xl md:text-4xl font-extrabold text-white tracking-tight mb-2">
-                {book.title}
-              </h1>
-              <p className="text-lg text-slate-400 font-medium">
-                {book.author}
-              </p>
-            </div>
-
-            <hr className="border-slate-800/80 my-2" />
-
-            <div className="flex flex-col space-y-8 text-sm pt-2">
-              {/* 滑动胶囊状态切换 */}
-              <div className="flex flex-col space-y-3">
-                <label className="flex items-center gap-2 text-slate-400 font-medium">
-                  <BookOpen className="w-4 h-4" /> 阅读状态
-                </label>
-                <div className="flex p-1.5 bg-slate-900/50 border border-slate-800 rounded-xl relative">
-                  {STATUS_OPTIONS.map((opt) => {
-                    const isActive = book.status === opt.id;
-                    return (
-                      <button
-                        key={opt.id}
-                        onClick={() => handleBookUpdate({ status: opt.id })}
-                        className={`relative flex-1 py-2.5 text-sm font-medium transition-colors duration-300 z-10 ${
-                          isActive
-                            ? "text-white"
-                            : "text-slate-500 hover:text-slate-300"
-                        }`}
-                      >
-                        {isActive && (
-                          <motion.div
-                            layoutId="status-indicator"
-                            className="absolute inset-0 bg-slate-700 rounded-lg shadow-[0_0_20px_rgba(255,255,255,0.05)] border border-slate-600"
-                            transition={{
-                              type: "spring",
-                              stiffness: 300,
-                              damping: 25,
-                            }}
-                          />
-                        )}
-                        <span className="relative z-20">{opt.label}</span>
-                      </button>
-                    );
-                  })}
-                </div>
+          <div className="grid grid-cols-1 lg:grid-cols-10 gap-16 lg:gap-24 mt-6">
+            {/* ================= 左侧：书籍元数据 ================= */}
+            <div className="lg:col-span-4 flex flex-col space-y-6">
+              <div className="w-full aspect-video rounded-2xl overflow-hidden shadow-2xl border border-slate-800 relative group">
+                <Image
+                  ref={imgRef as any}
+                  // 👇 给它也加上击穿缓存的小尾巴
+                  src={
+                    coverUrl.startsWith("data:")
+                      ? coverUrl
+                      : `${coverUrl}?cors=1`
+                  }
+                  alt={book.title}
+                  fill
+                  crossOrigin="anonymous"
+                  onLoad={handleCoverLoad}
+                  sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+                  unoptimized={coverUrl.startsWith("data:")}
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-transparent to-transparent opacity-60" />
               </div>
 
-              {/* 时间选择 */}
-              <div className="grid grid-cols-2 gap-4">
-                {book.status !== "UNREAD" && (
-                  <motion.div
-                    initial={{ opacity: 0, y: -10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="flex flex-col space-y-3"
-                  >
-                    <label className="flex items-center gap-2 text-slate-400 font-medium">
-                      <Calendar className="w-4 h-4" /> 开始于
-                    </label>
-                    <input
-                      type="date"
-                      value={book.startTime || ""}
-                      onChange={(e) =>
-                        handleBookUpdate({ startTime: e.target.value })
-                      }
-                      className="
-                        bg-slate-900 border border-slate-700 text-slate-200 
-                        rounded-xl px-4 py-2.5 w-full outline-none 
-                        transition-all duration-300 shadow-inner
-                        hover:bg-slate-800 focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500
-                        /* 👇 下面是魔法：修改原生小日历图标的颜色和行为 */
-                        [&::-webkit-calendar-picker-indicator]:filter 
-                        [&::-webkit-calendar-picker-indicator]:invert 
-                        [&::-webkit-calendar-picker-indicator]:opacity-40 
-                        [&::-webkit-calendar-picker-indicator]:hover:opacity-100 
-                        [&::-webkit-calendar-picker-indicator]:cursor-pointer
-                        [&::-webkit-calendar-picker-indicator]:transition-opacity
-                      "
-                      style={{ colorScheme: "dark" }}
-                    />
-                  </motion.div>
-                )}
-
-                {book.status === "FINISHED" && (
-                  <motion.div
-                    initial={{ opacity: 0, y: -10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="flex flex-col space-y-3"
-                  >
-                    <label className="flex items-center gap-2 text-slate-400 font-medium">
-                      <Clock className="w-4 h-4" /> 结束于
-                    </label>
-                    <input
-                      type="date"
-                      value={book.endTime || ""}
-                      onChange={(e) =>
-                        handleBookUpdate({ endTime: e.target.value })
-                      }
-                      className="
-                        bg-slate-900 border border-slate-700 text-slate-200 
-                        rounded-xl px-4 py-2.5 w-full outline-none 
-                        transition-all duration-300 shadow-inner
-                        hover:bg-slate-800 focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500
-                        /* 👇 下面是魔法：修改原生小日历图标的颜色和行为 */
-                        [&::-webkit-calendar-picker-indicator]:filter 
-                        [&::-webkit-calendar-picker-indicator]:invert 
-                        [&::-webkit-calendar-picker-indicator]:opacity-40 
-                        [&::-webkit-calendar-picker-indicator]:hover:opacity-100 
-                        [&::-webkit-calendar-picker-indicator]:cursor-pointer
-                        [&::-webkit-calendar-picker-indicator]:transition-opacity
-                      "
-                      style={{ colorScheme: "dark" }}
-                    />
-                  </motion.div>
-                )}
+              <div>
+                <h1 className="text-3xl md:text-4xl font-extrabold text-white tracking-tight mb-2">
+                  {book.title}
+                </h1>
+                <p className="text-lg text-slate-400 font-medium">
+                  {book.author}
+                </p>
               </div>
 
-              {/* 个人评价 */}
-              <div className="flex flex-col space-y-3">
-                <label className="flex items-center gap-2 text-slate-400 font-medium">
-                  <Star className="w-4 h-4" /> 个人评价
-                </label>
-                <div className="flex items-center gap-4 bg-slate-900/30 p-3.5 rounded-xl border border-slate-800/50">
-                  <div
-                    className="flex gap-1.5"
-                    onMouseLeave={() => setHoverRating(0)}
-                  >
-                    {[1, 2, 3, 4, 5].map((star) => {
-                      const active = (hoverRating || book.rating) >= star;
+              <hr className="border-slate-800/80 my-2" />
+
+              <div className="flex flex-col space-y-8 text-sm pt-2">
+                {/* 滑动胶囊状态切换 */}
+                <div className="flex flex-col space-y-3">
+                  <label className="flex items-center gap-2 text-slate-400 font-medium">
+                    <BookOpen className="w-4 h-4" /> 阅读状态
+                  </label>
+                  <div className="flex p-1.5 bg-slate-900/50 border border-slate-800 rounded-xl relative">
+                    {STATUS_OPTIONS.map((opt) => {
+                      const isActive = book.status === opt.id;
                       return (
-                        <Star
-                          key={star}
-                          onClick={() => handleBookUpdate({ rating: star })}
-                          onMouseEnter={() => setHoverRating(star)}
-                          className={`w-7 h-7 cursor-pointer transition-all duration-300 ${
-                            active
-                              ? "text-yellow-400 fill-yellow-400 drop-shadow-[0_0_12px_rgba(250,204,21,0.6)] scale-110"
-                              : "text-slate-700 hover:text-slate-500"
+                        <button
+                          key={opt.id}
+                          onClick={() => handleBookUpdate({ status: opt.id })}
+                          className={`relative flex-1 py-2.5 text-sm font-medium transition-colors duration-300 z-10 ${
+                            isActive
+                              ? "text-white"
+                              : "text-slate-500 hover:text-slate-300"
                           }`}
-                        />
+                        >
+                          {isActive && (
+                            <motion.div
+                              layoutId="status-indicator"
+                              className="absolute inset-0 bg-slate-700 rounded-lg shadow-[0_0_20px_rgba(255,255,255,0.05)] border border-slate-600"
+                              transition={{
+                                type: "spring",
+                                stiffness: 300,
+                                damping: 25,
+                              }}
+                            />
+                          )}
+                          <span className="relative z-20">{opt.label}</span>
+                        </button>
                       );
                     })}
                   </div>
-                  <span className="text-sm font-medium text-yellow-400/90 w-28 transition-all">
-                    {RATING_TEXTS[hoverRating || book.rating]}
-                  </span>
                 </div>
-              </div>
 
-              {/* 图书标签 */}
-              <div className="flex flex-col space-y-3 pt-2">
-                <div className="flex items-center justify-between text-slate-400 font-medium">
-                  <label className="flex items-center gap-2">
-                    <Tags className="w-4 h-4" /> 图书标签
+                {/* 时间选择 */}
+                <div className="grid grid-cols-2 gap-4">
+                  {book.status !== "UNREAD" && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="flex flex-col space-y-3"
+                    >
+                      <label className="flex items-center gap-2 text-slate-400 font-medium">
+                        <Calendar className="w-4 h-4" /> 开始于
+                      </label>
+                      <input
+                        type="date"
+                        value={book.startTime || ""}
+                        onChange={(e) =>
+                          handleBookUpdate({ startTime: e.target.value })
+                        }
+                        className="
+                        bg-slate-900 border border-slate-700 text-slate-200 
+                        rounded-xl px-4 py-2.5 w-full outline-none 
+                        transition-all duration-300 shadow-inner
+                        hover:bg-slate-800 focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500
+                        /* 👇 下面是魔法：修改原生小日历图标的颜色和行为 */
+                        [&::-webkit-calendar-picker-indicator]:filter 
+                        [&::-webkit-calendar-picker-indicator]:invert 
+                        [&::-webkit-calendar-picker-indicator]:opacity-40 
+                        [&::-webkit-calendar-picker-indicator]:hover:opacity-100 
+                        [&::-webkit-calendar-picker-indicator]:cursor-pointer
+                        [&::-webkit-calendar-picker-indicator]:transition-opacity
+                      "
+                        style={{ colorScheme: "dark" }}
+                      />
+                    </motion.div>
+                  )}
+
+                  {book.status === "FINISHED" && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="flex flex-col space-y-3"
+                    >
+                      <label className="flex items-center gap-2 text-slate-400 font-medium">
+                        <Clock className="w-4 h-4" /> 结束于
+                      </label>
+                      <input
+                        type="date"
+                        value={book.endTime || ""}
+                        onChange={(e) =>
+                          handleBookUpdate({ endTime: e.target.value })
+                        }
+                        className="
+                        bg-slate-900 border border-slate-700 text-slate-200 
+                        rounded-xl px-4 py-2.5 w-full outline-none 
+                        transition-all duration-300 shadow-inner
+                        hover:bg-slate-800 focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500
+                        /* 👇 下面是魔法：修改原生小日历图标的颜色和行为 */
+                        [&::-webkit-calendar-picker-indicator]:filter 
+                        [&::-webkit-calendar-picker-indicator]:invert 
+                        [&::-webkit-calendar-picker-indicator]:opacity-40 
+                        [&::-webkit-calendar-picker-indicator]:hover:opacity-100 
+                        [&::-webkit-calendar-picker-indicator]:cursor-pointer
+                        [&::-webkit-calendar-picker-indicator]:transition-opacity
+                      "
+                        style={{ colorScheme: "dark" }}
+                      />
+                    </motion.div>
+                  )}
+                </div>
+
+                {/* 个人评价 */}
+                <div className="flex flex-col space-y-3">
+                  <label className="flex items-center gap-2 text-slate-400 font-medium">
+                    <Star className="w-4 h-4" /> 个人评价
                   </label>
-                  <span className="text-xs text-slate-500">
-                    {(book.tags || []).length} / 3
-                  </span>
+                  <div className="flex items-center gap-4 bg-slate-900/30 p-3.5 rounded-xl border border-slate-800/50">
+                    <div
+                      className="flex gap-1.5"
+                      onMouseLeave={() => setHoverRating(0)}
+                    >
+                      {[1, 2, 3, 4, 5].map((star) => {
+                        const active = (hoverRating || book.rating) >= star;
+                        return (
+                          <Star
+                            key={star}
+                            onClick={() => handleBookUpdate({ rating: star })}
+                            onMouseEnter={() => setHoverRating(star)}
+                            className={`w-7 h-7 cursor-pointer transition-all duration-300 ${
+                              active
+                                ? "text-yellow-400 fill-yellow-400 drop-shadow-[0_0_12px_rgba(250,204,21,0.6)] scale-110"
+                                : "text-slate-700 hover:text-slate-500"
+                            }`}
+                          />
+                        );
+                      })}
+                    </div>
+                    <span className="text-sm font-medium text-yellow-400/90 w-28 transition-all">
+                      {RATING_TEXTS[hoverRating || book.rating]}
+                    </span>
+                  </div>
                 </div>
-                <div className="flex flex-wrap gap-2.5">
-                  {PREDEFINED_TAGS.map((tag) => {
-                    const isSelected = (book.tags || []).includes(tag);
-                    const isMaxed =
-                      (book.tags || []).length >= 3 && !isSelected;
-                    return (
-                      <button
-                        key={tag}
-                        onClick={() => toggleTag(tag)}
-                        disabled={isMaxed}
-                        className={`px-3.5 py-1.5 text-xs rounded-lg transition-all duration-300 ${
-                          isSelected
-                            ? "bg-slate-200 text-slate-950 font-bold shadow-[0_0_15px_rgba(255,255,255,0.2)] scale-105"
-                            : isMaxed
-                            ? "bg-slate-900/20 text-slate-700 border border-slate-800/30 cursor-not-allowed"
-                            : "bg-slate-900 text-slate-400 border border-slate-800 hover:border-slate-600 hover:text-slate-200"
-                        }`}
-                      >
-                        {tag}
-                      </button>
-                    );
-                  })}
+
+                {/* 图书标签 */}
+                <div className="flex flex-col space-y-3 pt-2">
+                  <div className="flex items-center justify-between text-slate-400 font-medium">
+                    <label className="flex items-center gap-2">
+                      <Tags className="w-4 h-4" /> 图书标签
+                    </label>
+                    <span className="text-xs text-slate-500">
+                      {(book.tags || []).length} / 3
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap gap-2.5">
+                    {PREDEFINED_TAGS.map((tag) => {
+                      const isSelected = (book.tags || []).includes(tag);
+                      const isMaxed =
+                        (book.tags || []).length >= 3 && !isSelected;
+                      return (
+                        <button
+                          key={tag}
+                          onClick={() => toggleTag(tag)}
+                          disabled={isMaxed}
+                          className={`px-3.5 py-1.5 text-xs rounded-lg transition-all duration-300 ${
+                            isSelected
+                              ? "bg-slate-200 text-slate-950 font-bold shadow-[0_0_15px_rgba(255,255,255,0.2)] scale-105"
+                              : isMaxed
+                              ? "bg-slate-900/20 text-slate-700 border border-slate-800/30 cursor-not-allowed"
+                              : "bg-slate-900 text-slate-400 border border-slate-800 hover:border-slate-600 hover:text-slate-200"
+                          }`}
+                        >
+                          {tag}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
 
-          {/* ================= 右侧：摘录与笔记 ================= */}
-          <div className="lg:col-span-6 flex flex-col">
-            <div className="flex items-center justify-between mb-8 pb-4 border-b border-slate-800/80">
-              <h2 className="text-2xl font-bold text-white tracking-tight">
-                摘录与笔记
-              </h2>
-              <AddExcerptDialog bookId={id} onSuccess={fetchBookData} />
-            </div>
+            {/* ================= 右侧：摘录与笔记 ================= */}
+            <div className="lg:col-span-6 flex flex-col">
+              <div className="flex items-center justify-between mb-8 pb-4 border-b border-slate-800/80">
+                <h2 className="text-2xl font-bold text-white tracking-tight">
+                  摘录与笔记
+                </h2>
+                <AddExcerptDialog bookId={id} onSuccess={fetchBookData} />
+              </div>
 
-            <div className="flex flex-col gap-6">
-              {excerpts.length === 0 ? (
-                <div className="py-20 flex flex-col items-center justify-center text-center bg-slate-900/30 rounded-2xl border border-slate-800/50 border-dashed">
-                  <p className="text-slate-500 mb-2">
-                    这本书还没有留下任何摘录
-                  </p>
-                  <p className="text-sm text-slate-600">
-                    点击右上角按钮记录下你的第一条思考
-                  </p>
-                </div>
-              ) : (
-                excerpts.map((excerpt) => (
-                  <div
-                    key={excerpt.id}
-                    className="p-6 rounded-2xl bg-slate-900/50 border border-slate-800/80 hover:border-slate-700 transition-colors"
-                  >
-                    <p className="text-slate-300 leading-relaxed font-serif text-lg whitespace-pre-wrap">
-                      "{excerpt.content}"
+              <div className="flex flex-col gap-6">
+                {excerpts.length === 0 ? (
+                  <div className="py-20 flex flex-col items-center justify-center text-center bg-slate-900/30 rounded-2xl border border-slate-800/50 border-dashed">
+                    <p className="text-slate-500 mb-2">
+                      这本书还没有留下任何摘录
                     </p>
-                    <div className="mt-4 text-xs text-slate-600 text-right">
-                      记录于 {new Date(excerpt.createdAt).toLocaleString()}
-                    </div>
+                    <p className="text-sm text-slate-600">
+                      点击右上角按钮记录下你的第一条思考
+                    </p>
                   </div>
-                ))
-              )}
+                ) : (
+                  excerpts.map((excerpt) => (
+                    <div
+                      key={excerpt.id}
+                      className="p-6 rounded-2xl bg-slate-900/50 border border-slate-800/80 hover:border-slate-700 transition-colors"
+                    >
+                      <p className="text-slate-300 leading-relaxed font-serif text-lg whitespace-pre-wrap">
+                        "{excerpt.content}"
+                      </p>
+                      <div className="mt-4 text-xs text-slate-600 text-right">
+                        记录于 {new Date(excerpt.createdAt).toLocaleString()}
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
             </div>
           </div>
-        </div>
         </div>
       </div>
     </PageTransition>
