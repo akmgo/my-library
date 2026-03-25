@@ -148,6 +148,7 @@ function BookContent({ params }: { params: Promise<{ id: string }> }) {
               src={coverUrl.startsWith("data:") ? coverUrl : `${coverUrl}?cors=1`}
               alt="Background"
               fill
+              priority
               className="object-cover scale-[1.3] blur-[100px] opacity-60 saturate-[1.5] animate-in fade-in duration-1000"
               unoptimized={true}
             />
@@ -190,6 +191,7 @@ function BookContent({ params }: { params: Promise<{ id: string }> }) {
                 src={coverUrl.startsWith("data:") ? coverUrl : `${coverUrl}?cors=1`}
                 alt={book.title}
                 fill
+                priority
                 crossOrigin="anonymous"
                 sizes="(max-width: 768px) 100vw, 33vw"
                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"

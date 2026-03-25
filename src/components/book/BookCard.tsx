@@ -1,8 +1,8 @@
 // src/components/book/BookCard.tsx
 "use client";
 
-import React, { useState } from 'react';
-import { Calendar, Clock, Star, BookOpen } from 'lucide-react';
+import React from "react";
+import { Calendar, Clock, Star, BookOpen } from "lucide-react";
 import Image from "next/image";
 import { motion } from "framer-motion";
 
@@ -11,7 +11,7 @@ export interface Book {
   title: string;
   author: string;
   coverUrl?: string;
-  status: 'UNREAD' | 'READING' | 'FINISHED';
+  status: "UNREAD" | "READING" | "FINISHED";
   startTime?: string;
   endTime?: string;
   rating?: string;
@@ -19,28 +19,28 @@ export interface Book {
 }
 
 export default function BookCard({ book }: { book: Book }) {
-  const [isLoaded, setIsLoaded] = useState(false);
-
-  const rawCover = book.coverUrl || "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?q=80&w=1000&auto=format&fit=crop";
-  const cover = rawCover.startsWith('data:') ? rawCover : `${rawCover}?cors=1`;
+  const rawCover =
+    book.coverUrl ||
+    "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?q=80&w=1000&auto=format&fit=crop";
+  const cover = rawCover.startsWith("data:") ? rawCover : `${rawCover}?cors=1`;
 
   // 极简状态胶囊 (摒弃耗性能的毛玻璃，使用纯色)
   const renderStatusPill = () => {
     switch (book.status) {
-      case 'READING':
+      case "READING":
         return (
           <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-950 border border-emerald-800 text-emerald-400 text-xs font-medium">
             <div className="w-1.5 h-1.5 rounded-full bg-emerald-500"></div>
             在读
           </div>
         );
-      case 'FINISHED':
+      case "FINISHED":
         return (
           <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-indigo-950 border border-indigo-800 text-indigo-400 text-xs font-medium">
             已读完
           </div>
         );
-      case 'UNREAD':
+      case "UNREAD":
       default:
         return (
           <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-800 border border-slate-700 text-slate-300 text-xs font-medium">
@@ -52,36 +52,27 @@ export default function BookCard({ book }: { book: Book }) {
 
   return (
     // 【极致流畅】：摒弃 backdrop-blur 和复杂光晕，采用深色纯背景 (bg-slate-900)，保证 120 帧丝滑滚动
-    <div 
-      className="group flex flex-col w-full rounded-2xl overflow-hidden bg-slate-900 border border-slate-800 transition-all duration-300 hover:-translate-y-1.5 hover:border-slate-600 hover:shadow-2xl cursor-pointer"
-    >
-      
+    <div className="group flex flex-col w-full rounded-2xl overflow-hidden bg-slate-900 border border-slate-800 transition-all duration-300 hover:-translate-y-1.5 hover:border-slate-600 hover:shadow-2xl cursor-pointer">
       {/* 封面区域 */}
-      <div className={`w-full aspect-video overflow-hidden relative bg-slate-950 flex items-center justify-center ${!isLoaded ? "animate-pulse" : ""}`}>
-        
-        {!isLoaded && (
-          <BookOpen className="w-8 h-8 text-slate-700" />
-        )}
+      <div
+        className={`w-full aspect-video overflow-hidden relative bg-slate-950 flex items-center justify-center `}
+      >
+        <BookOpen className="w-8 h-8 text-slate-800 absolute z-0" />
 
-        <Image 
-          src={cover} 
-          alt={book.title} 
+        {/* 🚀 移除 onLoad 和 opacity 过渡，让图片一旦就绪瞬间渲染 (覆盖在 z-10) */}
+        <Image
+          src={cover}
+          alt={book.title}
           fill
           sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-          onLoad={() => setIsLoaded(true)} 
-          className={`
-            object-cover transition-all duration-500 ease-out
-            ${isLoaded ? "opacity-100 group-hover:scale-105" : "opacity-0"}
-          `}
-          unoptimized={cover.startsWith('data:')}
+          className="object-cover group-hover:scale-105 transition-transform duration-500 z-10 relative"
+          unoptimized={cover.startsWith("data:")}
         />
-        
+
         {/* 顶部极简遮罩，用于衬托状态标签 */}
         <div className="absolute inset-0 bg-gradient-to-b from-slate-950/60 to-transparent h-1/3 z-10 pointer-events-none"></div>
-        
-        <div className="absolute top-3 right-3 z-20">
-          {renderStatusPill()}
-        </div>
+
+        <div className="absolute top-3 right-3 z-20">{renderStatusPill()}</div>
       </div>
 
       {/* 文本信息区 */}
@@ -96,20 +87,32 @@ export default function BookCard({ book }: { book: Book }) {
         </div>
 
         <div className="mt-auto">
-          {book.status === 'READING' && book.startTime && (
+          {book.status === "READING" && book.startTime && (
             <div className="flex items-center text-xs text-slate-400 gap-1.5 font-medium bg-slate-950 p-2 rounded-lg border border-slate-800 w-fit">
               <Calendar className="w-3.5 h-3.5 text-emerald-500" />
               <span>开始于 {book.startTime}</span>
             </div>
           )}
 
-          {book.status === 'FINISHED' && (
+          {book.status === "FINISHED" && (
             <div className="flex flex-col gap-3">
               {(book.startTime || book.endTime) && (
                 <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-400 font-medium bg-slate-950 p-2.5 rounded-lg border border-slate-800">
-                  {book.startTime && <span className="flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5 text-slate-500"/> {book.startTime}</span>}
-                  {book.startTime && book.endTime && <span className="text-slate-600 px-1">→</span>}
-                  {book.endTime && <span className="flex items-center gap-1.5"><Clock className="w-3.5 h-3.5 text-slate-500"/> {book.endTime}</span>}
+                  {book.startTime && (
+                    <span className="flex items-center gap-1.5">
+                      <Calendar className="w-3.5 h-3.5 text-slate-500" />{" "}
+                      {book.startTime}
+                    </span>
+                  )}
+                  {book.startTime && book.endTime && (
+                    <span className="text-slate-600 px-1">→</span>
+                  )}
+                  {book.endTime && (
+                    <span className="flex items-center gap-1.5">
+                      <Clock className="w-3.5 h-3.5 text-slate-500" />{" "}
+                      {book.endTime}
+                    </span>
+                  )}
                 </div>
               )}
 
@@ -120,17 +123,20 @@ export default function BookCard({ book }: { book: Book }) {
                     {book.rating}
                   </div>
                 )}
-                {book.tags && book.tags.map(tag => (
-                  <span key={tag} className="px-2.5 py-1 rounded-md bg-slate-800 border border-slate-700 text-slate-300 text-xs font-medium">
-                    {tag}
-                  </span>
-                ))}
+                {book.tags &&
+                  book.tags.map((tag) => (
+                    <span
+                      key={tag}
+                      className="px-2.5 py-1 rounded-md bg-slate-800 border border-slate-700 text-slate-300 text-xs font-medium"
+                    >
+                      {tag}
+                    </span>
+                  ))}
               </div>
             </div>
           )}
         </div>
       </div>
-      
     </div>
   );
 }
