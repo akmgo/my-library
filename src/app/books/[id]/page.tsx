@@ -71,19 +71,16 @@ function DetailSkeleton() {
 }
 
 // ==========================================
-// 2. 书籍详情核心组件
+// 2. 书籍详情核心组件 (重构为上下结构画廊风)
 // ==========================================
 function BookContent({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
-
   const [loading, setLoading] = useState(true);
   const [book, setBook] = useState<any>(null);
   const [excerpts, setExcerpts] = useState<any[]>([]);
   const [hoverRating, setHoverRating] = useState(0);
-
   const router = useRouter();
 
-  // 初始化拉取数据
   const fetchBookData = async () => {
     const res = await getBookDetail(id);
     if (res.success) {
@@ -97,10 +94,8 @@ function BookContent({ params }: { params: Promise<{ id: string }> }) {
     fetchBookData();
   }, [id]);
 
-  // 乐观 UI 更新 + 后台静默保存
   const handleBookUpdate = async (updates: any) => {
     setBook((prev: any) => ({ ...prev, ...updates }));
-
     const dbUpdates = { ...updates };
     if (dbUpdates.tags) {
       dbUpdates.tags = JSON.stringify(dbUpdates.tags);
@@ -120,9 +115,7 @@ function BookContent({ params }: { params: Promise<{ id: string }> }) {
     handleBookUpdate({ tags: newTags });
   };
 
-  if (loading) {
-    return <DetailSkeleton />;
-  }
+  if (loading) return <DetailSkeleton />;
 
   if (!book) {
     return (
@@ -141,281 +134,261 @@ function BookContent({ params }: { params: Promise<{ id: string }> }) {
 
   return (
     <PageTransition>
-      <div className="relative min-h-screen w-full overflow-hidden">
-        
-        {/* ================= 魔法光晕层：大厂级“封面倒影”全屏背景 ================= */}
+      <div className="relative min-h-screen w-full bg-slate-950 overflow-hidden text-slate-200">
+        {/* ================= 背景层：降低亮度，增强文字对比度 ================= */}
         <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
-          {/* 1. 把封面本身作为背景，极限放大 + 极限模糊 + 提亮饱和度 */}
           {book?.coverUrl && (
             <Image
-              src={coverUrl.startsWith("data:") ? coverUrl : `${coverUrl}?cors=1`}
-              alt="Background Blur"
+              src={
+                coverUrl.startsWith("data:") ? coverUrl : `${coverUrl}?cors=1`
+              }
+              alt="Background"
               fill
-              className="object-cover scale-[1.5] blur-[120px] saturate-[1.5] opacity-60 animate-in fade-in duration-1000"
+              className="object-cover scale-[1.2] blur-[100px] opacity-30 animate-in fade-in duration-1000"
               unoptimized={true}
             />
           )}
-          {/* 2. 覆盖一层通透的玻璃遮罩：告别死黑，采用带有呼吸感的轻盈深蓝灰 */}
-          <div className="absolute inset-0 bg-slate-800/40 backdrop-blur-3xl mix-blend-overlay"></div>
-          {/* 3. 底部渐变，保证文字可读性 */}
-          <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/60 to-transparent"></div>
+          {/* 加入深色磨砂遮罩，把刺眼的光晕压下去，变成高级环境光 */}
+          <div className="absolute inset-0 bg-slate-950/70 backdrop-blur-3xl"></div>
+          {/* 底部渐变变黑，让摘录区的文字完全清晰 */}
+          <div className="absolute inset-0 bg-gradient-to-b from-transparent via-slate-950/50 to-slate-950"></div>
         </div>
-        {/* ===================================================================== */}
 
-        <div className="relative z-10 min-h-screen w-full max-w-7xl mx-auto px-6 md:px-12 pt-24 pb-32">
-          
-          <button
-            onClick={() => router.back()}
-            className="inline-flex items-center text-slate-300 hover:text-white mb-10 transition-colors group bg-white/5 px-4 py-2 rounded-full backdrop-blur-md border border-white/10 hover:bg-white/10"
-          >
-            <ArrowLeft className="w-4 h-4 mr-2 group-hover:-translate-x-1 transition-transform" />
-            返回书架
-          </button>
+        {/* ================= 内容层 (最大宽度缩小到 5xl，让排版更紧凑高级) ================= */}
+        <div className="relative z-10 w-full max-w-5xl mx-auto px-6 md:px-12 pt-20 pb-32 flex flex-col">
+          {/* ================= 顶部控制栏 (统一玻璃拟态按钮) ================= */}
+          <div className="flex items-center justify-between mb-10 md:mb-16">
+            <button
+              onClick={() => router.back()}
+              className="inline-flex items-center justify-center gap-2 px-5 py-2.5 text-sm font-medium rounded-full bg-white/5 border border-white/10 backdrop-blur-md transition-all duration-300 hover:bg-white/10 hover:border-white/20 hover:shadow-[0_0_20px_rgba(255,255,255,0.1)] hover:-translate-y-0.5 active:scale-95 text-slate-300 hover:text-white group"
+            >
+              <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
+              返回书架
+            </button>
 
-          {book && <DeleteBookButton bookId={id} title={book.title} />}
+            {book && <DeleteBookButton bookId={id} title={book.title} />}
+          </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-20 mt-6">
-            
-            {/* ================= 左侧：书籍封面 ================= */}
-            <div className="lg:col-span-4 flex flex-col space-y-6">
-              {/* 改用白色的发光边框，显得更轻盈高贵 */}
-              <div className="w-full aspect-video rounded-2xl overflow-hidden shadow-[0_0_50px_rgba(0,0,0,0.3)] border border-white/20 relative group">
-                <Image
-                  src={coverUrl.startsWith("data:") ? coverUrl : `${coverUrl}?cors=1`}
-                  alt={book.title}
-                  fill
-                  crossOrigin="anonymous"
-                  sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
-                  unoptimized={coverUrl.startsWith("data:")}
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-transparent to-transparent opacity-60" />
-              </div>
+          {/* ================= 第一层：头部英雄卡片 (统一区块，左右排版) ================= */}
+          <div className="flex flex-col lg:flex-row bg-slate-900/40 backdrop-blur-2xl border border-white/5 rounded-[2.5rem] p-6 lg:p-10 shadow-2xl relative overflow-hidden group gap-8 lg:gap-12 mb-16">
+
+            {/* 卡片内部的极光点缀，增加包装盒的高级质感 */}
+            <div className="absolute -top-32 -right-32 w-[500px] h-[500px] bg-indigo-500/10 rounded-full blur-[100px] pointer-events-none group-hover:bg-indigo-500/20 transition-colors duration-1000"></div>
+
+            {/* 左侧封面：尺寸适度缩小，保持你的电影海报比例 */}
+            <div className="w-full sm:w-[320px] lg:w-[380px] shrink-0 aspect-video rounded-2xl overflow-hidden shadow-[0_15px_40px_rgba(0,0,0,0.4)] border border-white/10 relative z-10">
+              <Image
+                src={coverUrl.startsWith("data:") ? coverUrl : `${coverUrl}?cors=1`}
+                alt={book.title}
+                fill
+                crossOrigin="anonymous"
+                sizes="(max-width: 768px) 100vw, 33vw"
+                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+                unoptimized={coverUrl.startsWith("data:")}
+              />
             </div>
 
-            {/* ================= 右侧信息 ================= */}
-            <div className="lg:col-span-8 flex flex-col">
+            {/* 右侧信息区：弹性布局填满剩余空间 */}
+            <div className="flex flex-col flex-1 w-full relative z-10 py-2 lg:py-6">
               
-              {/* 标题和作者，增加了阴影以在复杂背景下保持清晰 */}
-              <div className="mb-8">
-                <h1 className="text-4xl md:text-5xl font-black text-white tracking-tight mb-4 drop-shadow-lg">
+              {/* 🚀 书名：纵向和横向双重绝对居中，字号调小更显精致 */}
+              <div className="flex-1 flex items-center justify-center min-h-[120px]">
+                <h1 className="text-3xl md:text-4xl lg:text-5xl font-black tracking-tight leading-tight drop-shadow-xl text-transparent bg-clip-text bg-gradient-to-br from-slate-100 to-slate-400 text-center px-4">
                   {book.title}
                 </h1>
-                <p className="text-xl text-slate-300 font-medium drop-shadow-md">
+              </div>
+              
+              {/* 🚀 作者区：左对齐，并在上方加一条极细的分界线拉开层次 */}
+              <div className="flex items-center justify-start gap-4 mt-8 pt-6 border-t border-white/5">
+                <div className="w-10 h-[2px] bg-indigo-500/50 rounded-full shadow-[0_0_10px_rgba(99,102,241,0.5)]"></div>
+                <p className="text-lg md:text-xl text-slate-400 font-medium tracking-wide">
                   {book.author}
                 </p>
               </div>
 
-              <hr className="border-slate-800/80 my-2" />
+            </div>
+          </div>
 
-              <div className="flex flex-col space-y-8 text-sm pt-4">
-                {/* 阅读状态 */}
-                <div className="flex flex-col space-y-3">
-                  <label className="flex items-center gap-2 text-slate-400 font-medium">
-                    <BookOpen className="w-4 h-4" /> 阅读状态
-                  </label>
-                  <div className="flex p-1.5 bg-slate-900/50 border border-slate-800 rounded-xl relative">
-                    {STATUS_OPTIONS.map((opt) => {
-                      const isActive = book.status === opt.id;
-                      return (
-                        <button
-                          key={opt.id}
-                          onClick={() => handleBookUpdate({ status: opt.id })}
-                          className={`relative flex-1 py-2.5 text-sm font-medium transition-colors duration-300 z-10 ${
-                            isActive
-                              ? "text-white"
-                              : "text-slate-500 hover:text-slate-300"
-                          }`}
-                        >
-                          {isActive && (
-                            <motion.div
-                              layoutId="status-indicator"
-                              className="absolute inset-0 bg-slate-700 rounded-lg shadow-[0_0_20px_rgba(255,255,255,0.05)] border border-slate-600"
-                              transition={{
-                                type: "spring",
-                                stiffness: 300,
-                                damping: 25,
-                              }}
-                            />
-                          )}
-                          <span className="relative z-20">{opt.label}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* 时间选择 */}
-                <div className="grid grid-cols-2 gap-4">
-                  {book.status !== "UNREAD" && (
-                    <motion.div
-                      initial={{ opacity: 0, y: -10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className="flex flex-col space-y-3"
-                    >
-                      <label className="flex items-center gap-2 text-slate-400 font-medium">
-                        <Calendar className="w-4 h-4" /> 开始于
-                      </label>
-                      <input
-                        type="date"
-                        value={book.startTime || ""}
-                        onChange={(e) =>
-                          handleBookUpdate({ startTime: e.target.value })
-                        }
-                        className="
-                        bg-slate-900/50 border border-slate-700 text-slate-200 
-                        rounded-xl px-4 py-2.5 w-full outline-none 
-                        transition-all duration-300 shadow-inner
-                        hover:bg-slate-800/80 focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500
-                        [&::-webkit-calendar-picker-indicator]:filter 
-                        [&::-webkit-calendar-picker-indicator]:invert 
-                        [&::-webkit-calendar-picker-indicator]:opacity-40 
-                        [&::-webkit-calendar-picker-indicator]:hover:opacity-100 
-                        [&::-webkit-calendar-picker-indicator]:cursor-pointer
-                        [&::-webkit-calendar-picker-indicator]:transition-opacity
-                      "
-                        style={{ colorScheme: "dark" }}
-                      />
-                    </motion.div>
-                  )}
-
-                  {book.status === "FINISHED" && (
-                    <motion.div
-                      initial={{ opacity: 0, y: -10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className="flex flex-col space-y-3"
-                    >
-                      <label className="flex items-center gap-2 text-slate-400 font-medium">
-                        <Clock className="w-4 h-4" /> 结束于
-                      </label>
-                      <input
-                        type="date"
-                        value={book.endTime || ""}
-                        onChange={(e) =>
-                          handleBookUpdate({ endTime: e.target.value })
-                        }
-                        className="
-                        bg-slate-900/50 border border-slate-700 text-slate-200 
-                        rounded-xl px-4 py-2.5 w-full outline-none 
-                        transition-all duration-300 shadow-inner
-                        hover:bg-slate-800/80 focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500
-                        [&::-webkit-calendar-picker-indicator]:filter 
-                        [&::-webkit-calendar-picker-indicator]:invert 
-                        [&::-webkit-calendar-picker-indicator]:opacity-40 
-                        [&::-webkit-calendar-picker-indicator]:hover:opacity-100 
-                        [&::-webkit-calendar-picker-indicator]:cursor-pointer
-                        [&::-webkit-calendar-picker-indicator]:transition-opacity
-                      "
-                        style={{ colorScheme: "dark" }}
-                      />
-                    </motion.div>
-                  )}
-                </div>
-
-                {/* 个人评价 */}
-                <div className="flex flex-col space-y-3">
-                  <label className="flex items-center gap-2 text-slate-400 font-medium">
-                    <Star className="w-4 h-4" /> 个人评价
-                  </label>
-                  <div className="flex items-center gap-4 bg-slate-900/30 p-3.5 rounded-xl border border-slate-800/50">
-                    <div
-                      className="flex gap-1.5"
-                      onMouseLeave={() => setHoverRating(0)}
-                    >
-                      {[1, 2, 3, 4, 5].map((star) => {
-                        const active = (hoverRating || book.rating) >= star;
-                        return (
-                          <Star
-                            key={star}
-                            onClick={() => handleBookUpdate({ rating: star })}
-                            onMouseEnter={() => setHoverRating(star)}
-                            className={`w-7 h-7 cursor-pointer transition-all duration-300 ${
-                              active
-                                ? "text-yellow-400 fill-yellow-400 drop-shadow-[0_0_12px_rgba(250,204,21,0.6)] scale-110"
-                                : "text-slate-700 hover:text-slate-500"
-                            }`}
-                          />
-                        );
-                      })}
-                    </div>
-                    <span className="text-sm font-medium text-yellow-400/90 w-28 transition-all">
-                      {RATING_TEXTS[hoverRating || book.rating]}
-                    </span>
-                  </div>
-                </div>
-
-                {/* 图书标签 */}
-                <div className="flex flex-col space-y-3 pt-2">
-                  <div className="flex items-center justify-between text-slate-400 font-medium">
-                    <label className="flex items-center gap-2">
-                      <Tags className="w-4 h-4" /> 图书标签
-                    </label>
-                    <span className="text-xs text-slate-500">
-                      {(book.tags || []).length} / 3
-                    </span>
-                  </div>
-                  <div className="flex flex-wrap gap-2.5">
-                    {PREDEFINED_TAGS.map((tag) => {
-                      const isSelected = (book.tags || []).includes(tag);
-                      const isMaxed =
-                        (book.tags || []).length >= 3 && !isSelected;
-                      return (
-                        <button
-                          key={tag}
-                          onClick={() => toggleTag(tag)}
-                          disabled={isMaxed}
-                          className={`px-3.5 py-1.5 text-xs rounded-lg transition-all duration-300 ${
-                            isSelected
-                              ? "bg-slate-200 text-slate-950 font-bold shadow-[0_0_15px_rgba(255,255,255,0.2)] scale-105"
-                              : isMaxed
-                              ? "bg-slate-900/20 text-slate-700 border border-slate-800/30 cursor-not-allowed"
-                              : "bg-slate-900 text-slate-400 border border-slate-800 hover:border-slate-600 hover:text-slate-200"
-                          }`}
-                        >
-                          {tag}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
-              
-              {/* ================= 下方：摘录与笔记 ================= */}
-              <div className="mt-16">
-                <div className="flex items-center justify-between mb-8 pb-4 border-b border-slate-800/80">
-                  <h2 className="text-2xl font-bold text-white tracking-tight drop-shadow-md">
-                    摘录与笔记
-                  </h2>
-                  <AddExcerptDialog bookId={id} onSuccess={fetchBookData} />
-                </div>
-
-                <div className="flex flex-col gap-6">
-                  {excerpts.length === 0 ? (
-                    <div className="py-20 flex flex-col items-center justify-center text-center bg-slate-900/30 backdrop-blur-md rounded-2xl border border-slate-800/50 border-dashed">
-                      <p className="text-slate-500 mb-2">
-                        这本书还没有留下任何摘录
-                      </p>
-                      <p className="text-sm text-slate-600">
-                        点击右上角按钮记录下你的第一条思考
-                      </p>
-                    </div>
-                  ) : (
-                    excerpts.map((excerpt) => (
-                      <div
-                        key={excerpt.id}
-                        className="p-6 rounded-2xl bg-slate-900/50 backdrop-blur-md border border-slate-800/80 hover:border-slate-700 transition-colors shadow-lg"
+          {/* ================= 第二层：中央控制台 (横铺的书籍元数据) ================= */}
+          <div className="bg-slate-900/40 backdrop-blur-xl rounded-3xl border border-slate-700/50 p-6 md:p-10 shadow-2xl flex flex-col gap-8">
+            {/* 上半部网格：状态与时间 */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+              {/* 状态 */}
+              <div className="flex flex-col space-y-3">
+                <label className="flex items-center gap-2 text-slate-400 font-medium text-sm">
+                  <BookOpen className="w-4 h-4" /> 当前状态
+                </label>
+                <div className="flex p-1.5 bg-slate-950/50 border border-slate-700/50 rounded-xl relative">
+                  {STATUS_OPTIONS.map((opt) => {
+                    const isActive = book.status === opt.id;
+                    return (
+                      <button
+                        key={opt.id}
+                        onClick={() => handleBookUpdate({ status: opt.id })}
+                        className={`relative flex-1 py-2 text-sm font-medium transition-colors duration-300 z-10 ${
+                          isActive
+                            ? "text-white"
+                            : "text-slate-500 hover:text-slate-300"
+                        }`}
                       >
-                        <p className="text-slate-300 leading-relaxed font-serif text-lg whitespace-pre-wrap">
-                          "{excerpt.content}"
-                        </p>
-                        <div className="mt-4 text-xs text-slate-600 text-right">
-                          记录于 {new Date(excerpt.createdAt).toLocaleString()}
-                        </div>
-                      </div>
-                    ))
-                  )}
+                        {isActive && (
+                          <motion.div
+                            layoutId="status-indicator"
+                            className="absolute inset-0 bg-indigo-600 rounded-lg shadow-lg"
+                            transition={{
+                              type: "spring",
+                              stiffness: 300,
+                              damping: 25,
+                            }}
+                          />
+                        )}
+                        <span className="relative z-20">{opt.label}</span>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
+
+              {/* 开始时间 */}
+              {book.status !== "UNREAD" && (
+                <div className="flex flex-col space-y-3">
+                  <label className="flex items-center gap-2 text-slate-400 font-medium text-sm">
+                    <Calendar className="w-4 h-4" /> 开始于
+                  </label>
+                  <input
+                    type="date"
+                    value={book.startTime || ""}
+                    onChange={(e) =>
+                      handleBookUpdate({ startTime: e.target.value })
+                    }
+                    className="bg-slate-950/50 border border-slate-700/50 text-white rounded-xl px-4 py-2 w-full outline-none focus:border-indigo-500 transition-colors [&::-webkit-calendar-picker-indicator]:filter [&::-webkit-calendar-picker-indicator]:invert [&::-webkit-calendar-picker-indicator]:opacity-60 [&::-webkit-calendar-picker-indicator]:hover:opacity-100"
+                  />
+                </div>
+              )}
+
+              {/* 结束时间 */}
+              {book.status === "FINISHED" && (
+                <div className="flex flex-col space-y-3">
+                  <label className="flex items-center gap-2 text-slate-400 font-medium text-sm">
+                    <Clock className="w-4 h-4" /> 结束于
+                  </label>
+                  <input
+                    type="date"
+                    value={book.endTime || ""}
+                    onChange={(e) =>
+                      handleBookUpdate({ endTime: e.target.value })
+                    }
+                    className="bg-slate-950/50 border border-slate-700/50 text-white rounded-xl px-4 py-2 w-full outline-none focus:border-indigo-500 transition-colors [&::-webkit-calendar-picker-indicator]:filter [&::-webkit-calendar-picker-indicator]:invert [&::-webkit-calendar-picker-indicator]:opacity-60 [&::-webkit-calendar-picker-indicator]:hover:opacity-100"
+                  />
+                </div>
+              )}
+            </div>
+
+            {/* 下半部分：评价 */}
+            <div className="flex flex-col space-y-3">
+              <label className="flex items-center gap-2 text-slate-400 font-medium text-sm">
+                <Star className="w-4 h-4" /> 个人评价
+              </label>
+              <div className="flex items-center gap-6 bg-slate-950/30 p-4 rounded-2xl border border-slate-700/50">
+                <div
+                  className="flex gap-2"
+                  onMouseLeave={() => setHoverRating(0)}
+                >
+                  {[1, 2, 3, 4, 5].map((star) => {
+                    const active = (hoverRating || book.rating) >= star;
+                    return (
+                      <Star
+                        key={star}
+                        onClick={() => handleBookUpdate({ rating: star })}
+                        onMouseEnter={() => setHoverRating(star)}
+                        className={`w-8 h-8 md:w-10 md:h-10 cursor-pointer transition-all duration-300 ${
+                          active
+                            ? "text-yellow-400 fill-yellow-400 drop-shadow-[0_0_15px_rgba(250,204,21,0.5)] scale-110"
+                            : "text-slate-700 hover:text-slate-500"
+                        }`}
+                      />
+                    );
+                  })}
+                </div>
+                {/* 评价文字大幅度强化 */}
+                <span className="text-lg md:text-xl font-bold text-yellow-400 drop-shadow-md w-40 transition-all">
+                  {RATING_TEXTS[hoverRating || book.rating]}
+                </span>
+              </div>
+            </div>
+
+            {/* 底部：标签 */}
+            <div className="flex flex-col space-y-3">
+              <div className="flex items-center justify-between text-slate-400 font-medium text-sm">
+                <label className="flex items-center gap-2">
+                  <Tags className="w-4 h-4" /> 图书标签
+                </label>
+                <span>{(book.tags || []).length} / 3</span>
+              </div>
+              <div className="flex flex-wrap gap-3">
+                {PREDEFINED_TAGS.map((tag) => {
+                  const isSelected = (book.tags || []).includes(tag);
+                  const isMaxed = (book.tags || []).length >= 3 && !isSelected;
+                  return (
+                    <button
+                      key={tag}
+                      onClick={() => toggleTag(tag)}
+                      disabled={isMaxed}
+                      // 标签色彩大幅度强化，选中状态极其显眼
+                      className={`px-4 py-2 text-sm rounded-xl transition-all duration-300 border ${
+                        isSelected
+                          ? "bg-indigo-600 text-white border-indigo-500 shadow-[0_0_20px_rgba(79,70,229,0.4)] font-bold scale-105"
+                          : isMaxed
+                          ? "bg-slate-900/30 text-slate-600 border-slate-800 cursor-not-allowed"
+                          : "bg-slate-800/80 text-slate-300 border-slate-700 hover:bg-slate-700 hover:text-white"
+                      }`}
+                    >
+                      {tag}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+
+          {/* ================= 第三层：摘录与笔记 (全宽沉浸式阅读) ================= */}
+          <div className="mt-20">
+            <div className="flex items-center justify-between mb-8 pb-4 border-b border-slate-800">
+              <h2 className="text-3xl font-bold text-white tracking-tight drop-shadow-md">
+                摘录与笔记
+              </h2>
+              <AddExcerptDialog bookId={id} onSuccess={fetchBookData} />
+            </div>
+
+            <div className="flex flex-col gap-6">
+              {excerpts.length === 0 ? (
+                <div className="py-24 flex flex-col items-center justify-center text-center bg-slate-900/30 backdrop-blur-md rounded-3xl border border-slate-800 border-dashed">
+                  <p className="text-slate-400 text-lg mb-2">
+                    这本书还没有留下任何思考的痕迹
+                  </p>
+                  <p className="text-sm text-slate-600">
+                    点击右上角按钮，记录下你的第一条摘录
+                  </p>
+                </div>
+              ) : (
+                excerpts.map((excerpt) => (
+                  <div
+                    key={excerpt.id}
+                    className="p-8 md:p-10 rounded-3xl bg-slate-900/60 backdrop-blur-xl border border-slate-700/50 hover:border-slate-500 transition-colors shadow-2xl relative group"
+                  >
+                    {/* 引号装饰，增加文化气息 */}
+                    <span className="absolute top-6 left-6 text-6xl text-slate-700/30 font-serif leading-none select-none">
+                      "
+                    </span>
+                    <p className="text-slate-200 leading-loose font-serif text-lg md:text-xl whitespace-pre-wrap relative z-10 pl-6">
+                      {excerpt.content}
+                    </p>
+                    <div className="mt-8 text-sm text-slate-500 text-right font-medium">
+                      —— 记录于 {new Date(excerpt.createdAt).toLocaleString()}
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           </div>
         </div>
@@ -425,7 +398,7 @@ function BookContent({ params }: { params: Promise<{ id: string }> }) {
 }
 
 // ==========================================
-// 3. 【页面主入口】：强行接管 Next.js 路由，瞬间渲染占位符
+// 3. 页面主入口
 // ==========================================
 export default function BookDetailPage({
   params,

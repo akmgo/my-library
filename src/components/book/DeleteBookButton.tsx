@@ -40,7 +40,7 @@ export default function DeleteBookButton({ bookId, title }: { bookId: string; ti
       <AlertDialogTrigger asChild>
         <Button 
           variant="ghost" 
-          className="text-slate-500 hover:text-red-400 hover:bg-red-400/10 transition-colors gap-2 px-3"
+          className="inline-flex items-center justify-center gap-2 px-5 py-2.5 text-sm font-medium rounded-full bg-white/5 border border-white/10 backdrop-blur-md transition-all duration-300 hover:bg-red-500/10 hover:border-red-500/30 hover:shadow-[0_0_20px_rgba(239,68,68,0.2)] hover:-translate-y-0.5 active:scale-95 text-slate-300 hover:text-red-400 group"
         >
           <Trash2 className="w-4 h-4" />
           <span className="text-sm">删除此书</span>
