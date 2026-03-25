@@ -1,7 +1,7 @@
 // src/app/books/[id]/page.tsx
 "use client";
 
-import { useState, useEffect, use, Suspense, useRef } from "react";
+import { useState, useEffect, use, Suspense } from "react";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -59,7 +59,7 @@ const RATING_TEXTS = [
 ];
 
 // ==========================================
-// 1. 【新增】：瞬间渲染的骨架屏，彻底干掉 3 秒白屏卡顿
+// 1. 瞬间渲染的骨架屏
 // ==========================================
 function DetailSkeleton() {
   return (
@@ -71,10 +71,9 @@ function DetailSkeleton() {
 }
 
 // ==========================================
-// 2. 【核心改造】：把原本的页面逻辑抽离到这个内部组件中
+// 2. 书籍详情核心组件
 // ==========================================
 function BookContent({ params }: { params: Promise<{ id: string }> }) {
-  // 这里的 use(params) 会触发 Suspense 挂起，但不会阻塞页面切换了！
   const { id } = use(params);
 
   const [loading, setLoading] = useState(true);
@@ -83,9 +82,6 @@ function BookContent({ params }: { params: Promise<{ id: string }> }) {
   const [hoverRating, setHoverRating] = useState(0);
 
   const router = useRouter();
-
-  const [dominantColor, setDominantColor] = useState<string | null>(null);
-  const imgRef = useRef<HTMLImageElement>(null);
 
   // 初始化拉取数据
   const fetchBookData = async () => {
@@ -112,24 +108,6 @@ function BookContent({ params }: { params: Promise<{ id: string }> }) {
     await updateBook(id, dbUpdates);
   };
 
-  const handleCoverLoad = async () => {
-    if (
-      imgRef.current &&
-      book?.coverUrl &&
-      !book.coverUrl.startsWith("data:")
-    ) {
-      try {
-        const ColorThiefModule = (await import("colorthief")) as any;
-        const ColorThief = ColorThiefModule.default || ColorThiefModule;
-        const colorThief = new ColorThief();
-        const color = colorThief.getColor(imgRef.current);
-        setDominantColor(`rgb(${color[0]}, ${color[1]}, ${color[2]})`);
-      } catch (e) {
-        console.log("取色失败", e);
-      }
-    }
-  };
-
   const toggleTag = (tag: string) => {
     let newTags = [...(book.tags || [])];
     if (newTags.includes(tag)) {
@@ -142,12 +120,10 @@ function BookContent({ params }: { params: Promise<{ id: string }> }) {
     handleBookUpdate({ tags: newTags });
   };
 
-  // 数据拉取中的内部加载态
   if (loading) {
     return <DetailSkeleton />;
   }
 
-  // 查无此书的状态
   if (!book) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-slate-950 text-slate-400">
@@ -165,92 +141,75 @@ function BookContent({ params }: { params: Promise<{ id: string }> }) {
 
   return (
     <PageTransition>
-      {/* 👇 新增：在这个 relative 的容器里，画出两个巨大的动态光圈 */}
       <div className="relative min-h-screen w-full overflow-hidden">
-        {/* ================= 魔法光晕层 (大厂级沉浸弥散极光特效) ================= */}
-        {/* 1. 第一层：巨大的环境光底色 */}
-        {/* 魔法：我们大幅增加不透明度 (opacity: 0.35)，使用径向渐变，并且不在这里使用 blur */}
-        <div
-          className="absolute top-[-20%] left-[-20%] h-[120%] w-[120%] transition-all duration-1000 ease-out pointer-events-none"
-          style={{
-            background: dominantColor
-              ? `radial-gradient(circle at 40% 30%, ${dominantColor} 0%, rgba(15, 23, 42, 0) 60%)`
-              : "radial-gradient(circle at 40% 30%, rgba(99, 102, 241, 0.2) 0%, rgba(15, 23, 42, 0) 60%)",
-            opacity: 0.35, // 提高基础不透明度，让颜色显现
-          }}
-        />
+        
+        {/* ================= 魔法光晕层：大厂级“封面倒影”全屏背景 ================= */}
+        <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
+          {/* 1. 把封面本身作为背景，极限放大 + 极限模糊 + 提亮饱和度 */}
+          {book?.coverUrl && (
+            <Image
+              src={coverUrl.startsWith("data:") ? coverUrl : `${coverUrl}?cors=1`}
+              alt="Background Blur"
+              fill
+              className="object-cover scale-[1.5] blur-[120px] saturate-[1.5] opacity-60 animate-in fade-in duration-1000"
+              unoptimized={true}
+            />
+          )}
+          {/* 2. 覆盖一层通透的玻璃遮罩：告别死黑，采用带有呼吸感的轻盈深蓝灰 */}
+          <div className="absolute inset-0 bg-slate-800/40 backdrop-blur-3xl mix-blend-overlay"></div>
+          {/* 3. 底部渐变，保证文字可读性 */}
+          <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/60 to-transparent"></div>
+        </div>
+        {/* ===================================================================== */}
 
-        {/* 2. 第二层：核心高亮弥散光 (极光核心) */}
-        {/* 魔法核心：filter: 'blur(150px)' 加上 mixBlendMode: 'screen' (滤色模式) */}
-        {/* 滤色模式会让深色背景完全透过来，只把提取出的颜色“光”叠加在上面，极其显色且高级！ */}
-        <div
-          className="absolute top-0 left-[-10%] h-[800px] w-[800px] rounded-full transition-all duration-1000 ease-out pointer-events-none"
-          style={{
-            backgroundColor: dominantColor || "rgba(168, 85, 247, 0.1)",
-            filter: "blur(150px)", // 大模糊
-            opacity: 0.25, // 这里保持半透明，增加层次感
-            mixBlendMode: "screen", // ✅ 终极魔法：滤色混合模式，让颜色在深色背景上发光
-          }}
-        />
-
-        {/* 3. 第三层：增加暖色调的环境光，让整体氛围更柔和 (可选) */}
-        <div
-          className="absolute bottom-[-10%] right-[-10%] h-[600px] w-[600px] rounded-full transition-all duration-1000 ease-out pointer-events-none"
-          style={{
-            backgroundColor: dominantColor || "rgba(168, 85, 247, 0.1)",
-            filter: "blur(120px)",
-            opacity: 0.15,
-            mixBlendMode: "plus-lighter", // 让光叠加
-          }}
-        />
-        {/* ========================================================================= */}
         <div className="relative z-10 min-h-screen w-full max-w-7xl mx-auto px-6 md:px-12 pt-24 pb-32">
+          
           <button
             onClick={() => router.back()}
-            className="inline-flex items-center text-slate-400 hover:text-white mb-10 transition-colors group"
+            className="inline-flex items-center text-slate-300 hover:text-white mb-10 transition-colors group bg-white/5 px-4 py-2 rounded-full backdrop-blur-md border border-white/10 hover:bg-white/10"
           >
             <ArrowLeft className="w-4 h-4 mr-2 group-hover:-translate-x-1 transition-transform" />
-            返回书房
+            返回书架
           </button>
 
           {book && <DeleteBookButton bookId={id} title={book.title} />}
 
-          <div className="grid grid-cols-1 lg:grid-cols-10 gap-16 lg:gap-24 mt-6">
-            {/* ================= 左侧：书籍元数据 ================= */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-20 mt-6">
+            
+            {/* ================= 左侧：书籍封面 ================= */}
             <div className="lg:col-span-4 flex flex-col space-y-6">
-              <div className="w-full aspect-video rounded-2xl overflow-hidden shadow-2xl border border-slate-800 relative group">
+              {/* 改用白色的发光边框，显得更轻盈高贵 */}
+              <div className="w-full aspect-video rounded-2xl overflow-hidden shadow-[0_0_50px_rgba(0,0,0,0.3)] border border-white/20 relative group">
                 <Image
-                  ref={imgRef as any}
-                  // 👇 给它也加上击穿缓存的小尾巴
-                  src={
-                    coverUrl.startsWith("data:")
-                      ? coverUrl
-                      : `${coverUrl}?cors=1`
-                  }
+                  src={coverUrl.startsWith("data:") ? coverUrl : `${coverUrl}?cors=1`}
                   alt={book.title}
                   fill
                   crossOrigin="anonymous"
-                  onLoad={handleCoverLoad}
                   sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
                   unoptimized={coverUrl.startsWith("data:")}
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-transparent to-transparent opacity-60" />
               </div>
+            </div>
 
-              <div>
-                <h1 className="text-3xl md:text-4xl font-extrabold text-white tracking-tight mb-2">
+            {/* ================= 右侧信息 ================= */}
+            <div className="lg:col-span-8 flex flex-col">
+              
+              {/* 标题和作者，增加了阴影以在复杂背景下保持清晰 */}
+              <div className="mb-8">
+                <h1 className="text-4xl md:text-5xl font-black text-white tracking-tight mb-4 drop-shadow-lg">
                   {book.title}
                 </h1>
-                <p className="text-lg text-slate-400 font-medium">
+                <p className="text-xl text-slate-300 font-medium drop-shadow-md">
                   {book.author}
                 </p>
               </div>
 
               <hr className="border-slate-800/80 my-2" />
 
-              <div className="flex flex-col space-y-8 text-sm pt-2">
-                {/* 滑动胶囊状态切换 */}
+              <div className="flex flex-col space-y-8 text-sm pt-4">
+                {/* 阅读状态 */}
                 <div className="flex flex-col space-y-3">
                   <label className="flex items-center gap-2 text-slate-400 font-medium">
                     <BookOpen className="w-4 h-4" /> 阅读状态
@@ -304,11 +263,10 @@ function BookContent({ params }: { params: Promise<{ id: string }> }) {
                           handleBookUpdate({ startTime: e.target.value })
                         }
                         className="
-                        bg-slate-900 border border-slate-700 text-slate-200 
+                        bg-slate-900/50 border border-slate-700 text-slate-200 
                         rounded-xl px-4 py-2.5 w-full outline-none 
                         transition-all duration-300 shadow-inner
-                        hover:bg-slate-800 focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500
-                        /* 👇 下面是魔法：修改原生小日历图标的颜色和行为 */
+                        hover:bg-slate-800/80 focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500
                         [&::-webkit-calendar-picker-indicator]:filter 
                         [&::-webkit-calendar-picker-indicator]:invert 
                         [&::-webkit-calendar-picker-indicator]:opacity-40 
@@ -337,11 +295,10 @@ function BookContent({ params }: { params: Promise<{ id: string }> }) {
                           handleBookUpdate({ endTime: e.target.value })
                         }
                         className="
-                        bg-slate-900 border border-slate-700 text-slate-200 
+                        bg-slate-900/50 border border-slate-700 text-slate-200 
                         rounded-xl px-4 py-2.5 w-full outline-none 
                         transition-all duration-300 shadow-inner
-                        hover:bg-slate-800 focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500
-                        /* 👇 下面是魔法：修改原生小日历图标的颜色和行为 */
+                        hover:bg-slate-800/80 focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500
                         [&::-webkit-calendar-picker-indicator]:filter 
                         [&::-webkit-calendar-picker-indicator]:invert 
                         [&::-webkit-calendar-picker-indicator]:opacity-40 
@@ -422,42 +379,42 @@ function BookContent({ params }: { params: Promise<{ id: string }> }) {
                   </div>
                 </div>
               </div>
-            </div>
+              
+              {/* ================= 下方：摘录与笔记 ================= */}
+              <div className="mt-16">
+                <div className="flex items-center justify-between mb-8 pb-4 border-b border-slate-800/80">
+                  <h2 className="text-2xl font-bold text-white tracking-tight drop-shadow-md">
+                    摘录与笔记
+                  </h2>
+                  <AddExcerptDialog bookId={id} onSuccess={fetchBookData} />
+                </div>
 
-            {/* ================= 右侧：摘录与笔记 ================= */}
-            <div className="lg:col-span-6 flex flex-col">
-              <div className="flex items-center justify-between mb-8 pb-4 border-b border-slate-800/80">
-                <h2 className="text-2xl font-bold text-white tracking-tight">
-                  摘录与笔记
-                </h2>
-                <AddExcerptDialog bookId={id} onSuccess={fetchBookData} />
-              </div>
-
-              <div className="flex flex-col gap-6">
-                {excerpts.length === 0 ? (
-                  <div className="py-20 flex flex-col items-center justify-center text-center bg-slate-900/30 rounded-2xl border border-slate-800/50 border-dashed">
-                    <p className="text-slate-500 mb-2">
-                      这本书还没有留下任何摘录
-                    </p>
-                    <p className="text-sm text-slate-600">
-                      点击右上角按钮记录下你的第一条思考
-                    </p>
-                  </div>
-                ) : (
-                  excerpts.map((excerpt) => (
-                    <div
-                      key={excerpt.id}
-                      className="p-6 rounded-2xl bg-slate-900/50 border border-slate-800/80 hover:border-slate-700 transition-colors"
-                    >
-                      <p className="text-slate-300 leading-relaxed font-serif text-lg whitespace-pre-wrap">
-                        "{excerpt.content}"
+                <div className="flex flex-col gap-6">
+                  {excerpts.length === 0 ? (
+                    <div className="py-20 flex flex-col items-center justify-center text-center bg-slate-900/30 backdrop-blur-md rounded-2xl border border-slate-800/50 border-dashed">
+                      <p className="text-slate-500 mb-2">
+                        这本书还没有留下任何摘录
                       </p>
-                      <div className="mt-4 text-xs text-slate-600 text-right">
-                        记录于 {new Date(excerpt.createdAt).toLocaleString()}
-                      </div>
+                      <p className="text-sm text-slate-600">
+                        点击右上角按钮记录下你的第一条思考
+                      </p>
                     </div>
-                  ))
-                )}
+                  ) : (
+                    excerpts.map((excerpt) => (
+                      <div
+                        key={excerpt.id}
+                        className="p-6 rounded-2xl bg-slate-900/50 backdrop-blur-md border border-slate-800/80 hover:border-slate-700 transition-colors shadow-lg"
+                      >
+                        <p className="text-slate-300 leading-relaxed font-serif text-lg whitespace-pre-wrap">
+                          "{excerpt.content}"
+                        </p>
+                        <div className="mt-4 text-xs text-slate-600 text-right">
+                          记录于 {new Date(excerpt.createdAt).toLocaleString()}
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
               </div>
             </div>
           </div>
@@ -476,7 +433,6 @@ export default function BookDetailPage({
   params: Promise<{ id: string }>;
 }) {
   return (
-    // Suspense 是彻底解决路由卡顿的终极武器！
     <Suspense fallback={<DetailSkeleton />}>
       <BookContent params={params} />
     </Suspense>

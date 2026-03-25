@@ -73,12 +73,7 @@ export default function BookCard({ book }: { book: Book }) {
   return (
     // 【优化1】：移除 backdrop-blur，改用纯背景色 bg-slate-900，极大减轻 GPU 负担
     <div 
-    className="group relative flex flex-col w-full rounded-2xl overflow-hidden bg-slate-900 border border-slate-800 transition-transform duration-300 hover:-translate-y-1 hover:border-slate-600 hover:shadow-2xl cursor-pointer"
-    style={{
-      // 如果取到了色，就用动态色作为悬浮时的阴影和边框高光
-      boxShadow: dominantColor ? `0 20px 40px -15px ${dominantColor}` : '',
-      borderColor: dominantColor ? `color-mix(in srgb, ${dominantColor} 40%, transparent)` : ''
-    }}
+      className="group relative flex flex-col w-full rounded-2xl overflow-hidden bg-slate-800/40 backdrop-blur-lg border border-white/5 transition-all duration-300 hover:-translate-y-2 hover:border-white/20 hover:shadow-[0_20px_40px_-15px_rgba(0,0,0,0.5)] cursor-pointer"
     >
       
       <div className="w-full aspect-video overflow-hidden relative bg-slate-950 flex items-center justify-center">

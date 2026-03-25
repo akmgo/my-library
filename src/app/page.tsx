@@ -179,9 +179,9 @@ async function BookSections() {
       {/* 已读 & 待读区块 */}
       <section className="w-full grid grid-cols-1 lg:grid-cols-2 gap-10">
         {/* 左侧：已读区块 */}
-        <div className="relative overflow-hidden rounded-[2.5rem] bg-slate-900 p-8 md:p-10 shadow-2xl">
-          <div className="absolute top-0 left-0 w-[500px] h-[500px] bg-blue-600/10 blur-[100px] rounded-full pointer-events-none -translate-x-1/2 -translate-y-1/2" />
-          <div className="absolute bottom-0 right-0 w-[400px] h-[400px] bg-purple-600/10 blur-[100px] rounded-full pointer-events-none translate-x-1/3 translate-y-1/3" />
+        <div className="relative overflow-hidden rounded-[2.5rem] bg-slate-800/30 backdrop-blur-xl p-8 md:p-10 shadow-2xl border border-white/10 flex flex-col hover:bg-slate-800/40 transition-colors duration-500">
+          <div className="absolute top-0 left-0 w-[500px] h-[500px] bg-blue-500/20 blur-[100px] rounded-full pointer-events-none -translate-x-1/2 -translate-y-1/2" />
+          <div className="absolute bottom-0 right-0 w-[400px] h-[400px] bg-purple-500/20 blur-[100px] rounded-full pointer-events-none translate-x-1/3 translate-y-1/3" />
 
           <div className="relative z-20 flex flex-col h-full">
             <div className="mb-8 flex items-center justify-between pointer-events-auto">
@@ -213,9 +213,9 @@ async function BookSections() {
         </div>
 
         {/* 右侧：想读区块 */}
-        <div className="relative overflow-hidden rounded-[2.5rem] bg-slate-900 p-8 md:p-10 shadow-2xl">
-          <div className="absolute top-0 left-0 w-[500px] h-[500px] bg-blue-600/10 blur-[100px] rounded-full pointer-events-none -translate-x-1/2 -translate-y-1/2" />
-          <div className="absolute bottom-0 right-0 w-[400px] h-[400px] bg-purple-600/10 blur-[100px] rounded-full pointer-events-none translate-x-1/3 translate-y-1/3" />
+        <div className="relative overflow-hidden rounded-[2.5rem] bg-slate-800/30 backdrop-blur-xl p-8 md:p-10 shadow-2xl border border-white/10 flex flex-col hover:bg-slate-800/40 transition-colors duration-500">
+          <div className="absolute top-0 left-0 w-[500px] h-[500px] bg-blue-500/20 blur-[100px] rounded-full pointer-events-none -translate-x-1/2 -translate-y-1/2" />
+          <div className="absolute bottom-0 right-0 w-[400px] h-[400px] bg-purple-500/20 blur-[100px] rounded-full pointer-events-none translate-x-1/3 translate-y-1/3" />
 
           <div className="relative z-20 flex flex-col h-full">
             <div className="mb-8 flex items-center justify-between pointer-events-auto">
