@@ -11,6 +11,7 @@ import {
   Clock,
   BookOpen,
   Loader2,
+  Sparkles // 👈 加上这个魔法星火图标
 } from "lucide-react";
 import { motion } from "framer-motion";
 import AddExcerptDialog from "../../../components/book/AddExcerptDialog";
@@ -135,23 +136,26 @@ function BookContent({ params }: { params: Promise<{ id: string }> }) {
   return (
     <PageTransition>
       <div className="relative min-h-screen w-full bg-slate-950 overflow-hidden text-slate-200">
-        {/* ================= 背景层：降低亮度，增强文字对比度 ================= */}
+        {/* ================= 背景层：重现呼吸感极光特效 ================= */}
         <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
+          {/* 1. 保底环境光：加入两个微弱的紫蓝色极光球，保证即使图片没加载也有高级感 */}
+          <div className="absolute top-[-10%] left-[-10%] w-[60%] h-[60%] bg-indigo-600/10 blur-[120px] rounded-full mix-blend-screen" />
+          <div className="absolute bottom-[-10%] right-[-10%] w-[60%] h-[60%] bg-purple-600/10 blur-[120px] rounded-full mix-blend-screen" />
+
+          {/* 2. 封面倒影：放大尺寸，提高透明度让光透出来 */}
           {book?.coverUrl && (
             <Image
-              src={
-                coverUrl.startsWith("data:") ? coverUrl : `${coverUrl}?cors=1`
-              }
+              src={coverUrl.startsWith("data:") ? coverUrl : `${coverUrl}?cors=1`}
               alt="Background"
               fill
-              className="object-cover scale-[1.2] blur-[100px] opacity-30 animate-in fade-in duration-1000"
+              className="object-cover scale-[1.5] blur-[100px] opacity-50 saturate-[1.2] animate-in fade-in duration-1000"
               unoptimized={true}
             />
           )}
-          {/* 加入深色磨砂遮罩，把刺眼的光晕压下去，变成高级环境光 */}
-          <div className="absolute inset-0 bg-slate-950/70 backdrop-blur-3xl"></div>
-          {/* 底部渐变变黑，让摘录区的文字完全清晰 */}
-          <div className="absolute inset-0 bg-gradient-to-b from-transparent via-slate-950/50 to-slate-950"></div>
+          {/* 3. 玻璃遮罩：去掉了厚重的 backdrop-blur，改用带色彩混合的普通半透明，让底光能“透”上来 */}
+          <div className="absolute inset-0 bg-slate-950/60 mix-blend-multiply"></div>
+          {/* 4. 底部渐变变黑：确保摘录区文字绝对清晰 */}
+          <div className="absolute inset-0 bg-gradient-to-b from-transparent via-slate-950/80 to-slate-950"></div>
         </div>
 
         {/* ================= 内容层 (最大宽度缩小到 5xl，让排版更紧凑高级) ================= */}
@@ -289,11 +293,14 @@ function BookContent({ params }: { params: Promise<{ id: string }> }) {
               <label className="flex items-center gap-2 text-slate-400 font-medium text-sm">
                 <Star className="w-4 h-4" /> 个人评价
               </label>
-              <div className="flex items-center gap-6 bg-slate-950/30 p-4 rounded-2xl border border-slate-700/50">
-                <div
-                  className="flex gap-2"
-                  onMouseLeave={() => setHoverRating(0)}
-                >
+              
+              {/* 评价容器：改为 Flex 横向铺满，并加入右侧渐变暗光 */}
+              <div className="flex items-center bg-slate-950/40 p-4 md:p-5 rounded-2xl border border-slate-700/50 relative overflow-hidden group">
+                
+                {/* 装饰 1：右侧氛围背景光 */}
+                <div className="absolute right-0 top-0 bottom-0 w-48 bg-gradient-to-l from-yellow-500/5 to-transparent pointer-events-none"></div>
+
+                <div className="flex gap-2 relative z-10 shrink-0" onMouseLeave={() => setHoverRating(0)}>
                   {[1, 2, 3, 4, 5].map((star) => {
                     const active = (hoverRating || book.rating) >= star;
                     return (
@@ -310,10 +317,19 @@ function BookContent({ params }: { params: Promise<{ id: string }> }) {
                     );
                   })}
                 </div>
-                {/* 评价文字大幅度强化 */}
-                <span className="text-lg md:text-xl font-bold text-yellow-400 drop-shadow-md w-40 transition-all">
-                  {RATING_TEXTS[hoverRating || book.rating]}
-                </span>
+                
+                {/* 评价文字：宽度加到 w-56 保证绝对不换行，左侧留出间距 */}
+                <div className="ml-6 w-56 relative z-10 shrink-0">
+                  <span className="text-lg md:text-xl font-bold text-yellow-400 drop-shadow-md transition-all">
+                    {RATING_TEXTS[hoverRating || book.rating]}
+                  </span>
+                </div>
+
+                {/* 装饰 2：右侧极简水印填充空白（大厂经典设计） */}
+                <div className="ml-auto relative z-10 flex items-center justify-center pr-4">
+                  <Sparkles className="w-8 h-8 text-yellow-500/10 group-hover:text-yellow-500/30 transition-colors duration-500 rotate-12" />
+                </div>
+
               </div>
             </div>
 
