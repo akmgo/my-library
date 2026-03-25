@@ -8,9 +8,6 @@
 	  "binding": "ASSETS",
 	  "directory": ".open-next/assets"
 	},
-	"images": {
-	  "binding": "IMAGES"
-	},
 	"services": [
 	  {
 		"binding": "WORKER_SELF_REFERENCE",
