@@ -30,8 +30,8 @@ export default function BookCard({ book }: { book: Book }) {
     setIsLoaded(true);
     if (imgRef.current && !cover.startsWith('data:')) {
       try {
-        const ColorThiefModule = await import('colorthief');
-        const ColorThief = ColorThiefModule.default as any;
+        const ColorThiefModule = (await import('colorthief')) as any;
+        const ColorThief = ColorThiefModule.default || ColorThiefModule;
 
         const colorThief = new ColorThief();
         const color = colorThief.getColor(imgRef.current);
@@ -95,7 +95,7 @@ export default function BookCard({ book }: { book: Book }) {
           fill
           sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
           crossOrigin="anonymous" // 极其重要：跨域取色必备
-          onLoadingComplete={handleImageLoad} // Next.js Image 推荐用这个
+          onLoad={handleImageLoad} // Next.js Image 推荐用这个
           className={`
             object-cover transition-all duration-500 ease-in-out z-10
             ${isLoaded ? "opacity-100 transform group-hover:scale-105" : "opacity-0 scale-100"}

@@ -115,8 +115,8 @@ function BookContent({ params }: { params: Promise<{ id: string }> }) {
   const handleCoverLoad = async () => {
     if (imgRef.current && book?.coverUrl && !book.coverUrl.startsWith('data:')) {
       try {
-        const ColorThiefModule = await import('colorthief');
-        const ColorThief = ColorThiefModule.default as any;
+        const ColorThiefModule = (await import('colorthief')) as any;
+        const ColorThief = ColorThiefModule.default || ColorThiefModule;
         const colorThief = new ColorThief();
         const color = colorThief.getColor(imgRef.current);
         setDominantColor(`rgb(${color[0]}, ${color[1]}, ${color[2]})`);
@@ -196,7 +196,7 @@ function BookContent({ params }: { params: Promise<{ id: string }> }) {
                 alt={book.title}
                 fill
                 crossOrigin="anonymous" // 👈 新增跨域权限
-                onLoadingComplete={handleCoverLoad} // 👈 新增加载完成的取色触发
+                onLoad={handleCoverLoad} // 👈 新增加载完成的取色触发
                 sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
                 unoptimized={coverUrl.startsWith("data:")}
