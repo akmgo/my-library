@@ -1,12 +1,15 @@
 {
 	"$schema": "node_modules/wrangler/config-schema.json",
-	"name": "my-library",
-	"main": ".open-next/worker.js",
-	"compatibility_date": "2026-03-17",
+	"name": "my-library-worker",
+	"compatibility_date": "2024-09-23",
+	"pages_build_output_dir": ".open-next/assets",
 	"compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+	// 🚀 核心 1：告诉 Cloudflare 我们的后端渲染引擎在这里！
+	"main": ".open-next/worker.js",
+	
+	// 🚀 核心 3：告诉 Cloudflare 静态文件 (CSS/图片) 在这里
 	"assets": {
-	  "binding": "ASSETS",
-	  "directory": ".open-next/assets"
+	  "directory": ".open-next/assets",
 	},
 	"services": [
 	  {
@@ -42,4 +45,4 @@
 	  "R2_BUCKET_NAME": "library-covers",
 	  "R2_PUBLIC_DOMAIN": "https://pub-55956733fff54a6b9e1d921def1c7805.r2.dev"
 	}
-  }
+}

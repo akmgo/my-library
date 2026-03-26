@@ -1,34 +1,38 @@
 // src/app/actions.ts
 "use server";
 
-import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { revalidatePath } from "next/cache";
+import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
-// ================= 0. 【新增】获取所有书籍（带 KV 边缘缓存） =================
+// 缓存键名常量，防止拼写错误
+const CACHE_KEY_ALL_BOOKS = "all_books_list";
+
+// ============================================================================
+// 📚 书籍管理 (Books Management)
+// ============================================================================
+
+/**
+ * 获取所有书籍（带 KV 边缘缓存）
+ */
 export async function getAllBooks() {
   try {
     const { env } = await getCloudflareContext({ async: true });
     const db = env.library_db as any;
-    const kv = env.LIBRARY_CACHE as any; // 获取绑定的 KV 实例
+    const kv = env.LIBRARY_CACHE as any; 
     
-    const CACHE_KEY = "all_books_list";
-
-    // 1. 【查缓存】：如果配置了 KV，先去缓存里找
+    // 1. 尝试命中 KV 缓存
     if (kv) {
-      const cachedBooks = await kv.get(CACHE_KEY, "json");
+      const cachedBooks = await kv.get(CACHE_KEY_ALL_BOOKS, "json");
       if (cachedBooks) {
-        console.log("⚡️ 命中 KV 缓存，毫秒级返回！");
         return { success: true, books: cachedBooks };
       }
     }
 
-    // 2. 【缓存未命中】：老老实实穿透到 D1 数据库查询
-    console.log("🐌 缓存未命中，穿透到 D1 数据库查询...");
     if (!db) throw new Error("数据库连接失败");
     
-    // 注意：如果在 schema.sql 中没有 addedAt 字段，可以改成 createdAt 或者干脆删掉 ORDER BY
+    // 2. 缓存未命中，穿透查询 D1
     const { results } = await db.prepare("SELECT * FROM books ORDER BY createdAt DESC").all();
     
     const books = results.map((book: any) => ({
@@ -36,10 +40,9 @@ export async function getAllBooks() {
       tags: JSON.parse(book.tags || '[]')
     }));
 
-    // 3. 【回写缓存】：把查到的最新数据塞进 KV，下次访问就快了
+    // 3. 回写 KV 缓存
     if (kv) {
-      await kv.put(CACHE_KEY, JSON.stringify(books));
-      console.log("💾 最新数据已写入 KV 缓存");
+      await kv.put(CACHE_KEY_ALL_BOOKS, JSON.stringify(books));
     }
 
     return { success: true, books };
@@ -49,68 +52,21 @@ export async function getAllBooks() {
   }
 }
 
-// ================= 1. 录入新书 =================
-export async function addBookToDB(formData: {
-  title: string;
-  author: string;
-  coverUrl?: string;
-}) {
-  try {
-    const { env } = await getCloudflareContext({ async: true });
-    const db = env.library_db as any;
-    const kv = env.LIBRARY_CACHE as any;
-
-    if (!db) {
-      throw new Error("数据库连接失败，请检查 env 配置");
-    }
-
-    const id = crypto.randomUUID();
-
-    await db
-      .prepare(
-        "INSERT INTO books (id, title, author, coverUrl, status) VALUES (?, ?, ?, ?, ?)"
-      )
-      .bind(
-        id,
-        formData.title,
-        formData.author,
-        formData.coverUrl || "",
-        "UNREAD" // 默认待读
-      )
-      .run();
-
-    // 【核心动作】：新增了书，立刻炸毁旧缓存！
-    if (kv) {
-      await kv.delete("all_books_list");
-      console.log("💣 数据库已新增，首页旧缓存已销毁");
-    }
-
-    revalidatePath("/");
-    return { success: true, id };
-  } catch (error: any) {
-    console.error("Failed to add book:", error);
-    return { success: false, error: error.message };
-  }
-}
-
-// ================= 2. 获取书籍详情与关联摘录 =================
+/**
+ * 获取单本书籍详情与关联摘录
+ */
 export async function getBookDetail(id: string) {
   try {
     const { env } = await getCloudflareContext({ async: true });
     const db = env.library_db as any;
 
-    const book = await db
-      .prepare("SELECT * FROM books WHERE id = ?")
-      .bind(id)
-      .first();
+    const book = await db.prepare("SELECT * FROM books WHERE id = ?").bind(id).first();
     if (!book) return { success: false, error: "未找到该书籍" };
 
     book.tags = JSON.parse(book.tags || "[]");
 
     const { results: excerpts } = await db
-      .prepare(
-        "SELECT * FROM excerpts WHERE bookId = ? ORDER BY createdAt DESC"
-      )
+      .prepare("SELECT * FROM excerpts WHERE bookId = ? ORDER BY createdAt DESC")
       .bind(id)
       .all();
 
@@ -120,7 +76,38 @@ export async function getBookDetail(id: string) {
   }
 }
 
-// ================= 3. 无感自动保存：更新书籍信息 =================
+/**
+ * 录入新书
+ */
+export async function addBookToDB(formData: { title: string; author: string; coverUrl?: string; }) {
+  try {
+    const { env } = await getCloudflareContext({ async: true });
+    const db = env.library_db as any;
+    const kv = env.LIBRARY_CACHE as any;
+
+    if (!db) throw new Error("数据库连接失败，请检查 env 配置");
+
+    const id = crypto.randomUUID();
+
+    await db
+      .prepare("INSERT INTO books (id, title, author, coverUrl, status) VALUES (?, ?, ?, ?, ?)")
+      .bind(id, formData.title, formData.author, formData.coverUrl || "", "UNREAD")
+      .run();
+
+    // 清理缓存并刷新页面
+    if (kv) await kv.delete(CACHE_KEY_ALL_BOOKS);
+    revalidatePath("/");
+    
+    return { success: true, id };
+  } catch (error: any) {
+    console.error("Failed to add book:", error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * 动态更新书籍信息 (无感保存)
+ */
 export async function updateBook(id: string, updates: any) {
   try {
     const { env } = await getCloudflareContext({ async: true });
@@ -138,14 +125,11 @@ export async function updateBook(id: string, updates: any) {
       .bind(...values, id)
       .run();
 
-    // 【核心动作】：状态改了，立刻炸毁旧缓存！
-    if (kv) {
-      await kv.delete("all_books_list");
-      console.log("💣 书籍状态已更新，首页旧缓存已销毁");
-    }
-
+    // 清理缓存并刷新关联页面
+    if (kv) await kv.delete(CACHE_KEY_ALL_BOOKS);
     revalidatePath(`/books/${id}`);
     revalidatePath(`/`);
+    
     return { success: true };
   } catch (error: any) {
     console.error("Failed to update book:", error);
@@ -153,7 +137,38 @@ export async function updateBook(id: string, updates: any) {
   }
 }
 
-// ================= 4. 录入新摘录 =================
+/**
+ * 删除书籍及其关联摘录
+ */
+export async function deleteBookFromDB(id: string) {
+  try {
+    const { env } = await getCloudflareContext({ async: true });
+    const db = env.library_db as any;
+    const kv = env.LIBRARY_CACHE as any;
+
+    if (!db) throw new Error("数据库连接失败");
+    
+    // 开启删除事务
+    await db.prepare("DELETE FROM books WHERE id = ?").bind(id).run();
+    await db.prepare("DELETE FROM excerpts WHERE bookId = ?").bind(id).run();
+    
+    if (kv) await kv.delete(CACHE_KEY_ALL_BOOKS);
+    revalidatePath("/");
+    
+    return { success: true };
+  } catch (error: any) {
+    console.error("Delete error:", error);
+    return { success: false, error: error.message || "删除失败" };
+  }
+}
+
+// ============================================================================
+// 📝 摘录管理 (Excerpts Management)
+// ============================================================================
+
+/**
+ * 录入新摘录
+ */
 export async function addExcerptToDB(bookId: string, content: string) {
   try {
     const { env } = await getCloudflareContext({ async: true });
@@ -173,7 +188,87 @@ export async function addExcerptToDB(bookId: string, content: string) {
   }
 }
 
-// ================= 5. 联网抓取书籍基本信息 (OpenLibrary 直连版) =================
+// ============================================================================
+// ☁️ 文件存储 (R2 Storage)
+// ============================================================================
+
+/**
+ * [方案 A] 纯服务端上传：通过 R2 绑定直接写入
+ */
+export async function uploadCoverToR2(formData: FormData) {
+  try {
+    const file = formData.get("file") as File;
+    if (!file) return { success: false, error: "未接收到图片文件" };
+
+    const { env } = await getCloudflareContext({ async: true });
+    const bucket = env.COVER_BUCKET as any;
+
+    if (!bucket) throw new Error("R2 存储桶未绑定");
+
+    const fileExtension = file.name.split('.').pop(); 
+    const fileName = `covers/${crypto.randomUUID()}.${fileExtension}`;
+    const arrayBuffer = await file.arrayBuffer();
+
+    await bucket.put(fileName, arrayBuffer, {
+      httpMetadata: { contentType: file.type },
+    });
+
+    // 替换为你的真实公开域名
+    const publicDomain = "https://pub-55956733fff54a6b9e1d921def1c7805.r2.dev"; 
+    return { success: true, coverUrl: `${publicDomain}/${fileName}` };
+  } catch (error: any) {
+    console.error("上传封面失败:", error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * [方案 B] 客户端直传：获取 AWS S3 预签名 URL
+ */
+export async function getPresignedUrl(fileName: string, contentType: string) {
+  try {
+    const { env } = await getCloudflareContext({ async: true });
+    
+    const accountId = (env.R2_ACCOUNT_ID || "").trim();
+    const accessKeyId = (env.R2_ACCESS_KEY_ID || "").trim();
+    const secretAccessKey = (env.R2_SECRET_ACCESS_KEY || "").trim();
+    const bucketName = (env.R2_BUCKET_NAME || "").trim();
+    const publicDomain = (env.R2_PUBLIC_DOMAIN || "").trim();
+
+    if (!accountId || !accessKeyId || !secretAccessKey) {
+      throw new Error(`缺少 S3 环境变量配置！`);
+    }
+
+    const S3 = new S3Client({
+      region: "auto",
+      endpoint: `https://${accountId}.r2.cloudflarestorage.com`,
+      credentials: { accessKeyId, secretAccessKey },
+    });
+
+    const uniqueFileName = `${Date.now()}-${fileName.replace(/\s+/g, '-')}`;
+    
+    const command = new PutObjectCommand({
+      Bucket: bucketName,
+      Key: uniqueFileName,
+      ContentType: contentType,
+    });
+
+    const uploadUrl = await getSignedUrl(S3, command, { expiresIn: 300 });
+
+    return { success: true, uploadUrl, finalUrl: `${publicDomain}/${uniqueFileName}` };
+  } catch (error: any) {
+    console.error("生成凭证致命错误:", error);
+    return { success: false, error: error.message };
+  }
+}
+
+// ============================================================================
+// 🌐 外部服务集成 (External APIs)
+// ============================================================================
+
+/**
+ * 联网抓取书籍基本信息 (OpenLibrary)
+ */
 export async function searchBookByTitle(title: string) {
   try {
     const response = await fetch(
@@ -187,137 +282,14 @@ export async function searchBookByTitle(title: string) {
     
     if (data.docs && data.docs.length > 0) {
       const bookDoc = data.docs.find((doc: any) => doc.author_name && doc.author_name.length > 0);
-      
       if (bookDoc) {
-        const author = bookDoc.author_name.join(", ");
-        return { success: true, book: { author } };
+        return { success: true, book: { author: bookDoc.author_name.join(", ") } };
       }
     }
     
     return { success: false, error: "开源书库未找到该书的作者信息" };
   } catch (error: any) {
     console.error("搜索失败:", error);
-    return { success: false, error: "书库接口暂时不可用，请检查网络" };
-  }
-}
-
-// ================= 6. 删除书籍 =================
-export async function deleteBookFromDB(id: string) {
-  try {
-    const { env } = await getCloudflareContext({ async: true });
-    const db = env.library_db as any;
-    const kv = env.LIBRARY_CACHE as any;
-
-    if (!db) {
-      throw new Error("数据库连接失败");
-    }
-    
-    await db.prepare("DELETE FROM books WHERE id = ?").bind(id).run();
-    await db.prepare("DELETE FROM excerpts WHERE bookId = ?").bind(id).run();
-    
-    // 【核心动作】：删除了书，立刻炸毁旧缓存！
-    if (kv) {
-      await kv.delete("all_books_list");
-      console.log("💣 书籍已被删除，首页旧缓存已销毁");
-    }
-
-    revalidatePath("/");
-    
-    return { success: true };
-  } catch (error: any) {
-    console.error("Delete error:", error);
-    return { success: false, error: error.message || "删除失败" };
-  }
-}
-
-// src/app/actions.ts
-
-// ================= 8. 上传封面到 R2 存储桶 =================
-export async function uploadCoverToR2(formData: FormData) {
-  try {
-    // 1. 从前端传来的 FormData 中提取文件对象
-    const file = formData.get("file") as File;
-    if (!file) {
-      return { success: false, error: "未接收到图片文件" };
-    }
-
-    // 2. 获取 Cloudflare 上下文和 R2 桶实例
-    const { env } = await getCloudflareContext({ async: true });
-    const bucket = env.COVER_BUCKET as any;
-
-    if (!bucket) {
-      throw new Error("R2 存储桶未绑定，请检查 wrangler.toml 和 env 类型");
-    }
-
-    // 3. 生成全球唯一的随机文件名 (防止同名图片互相覆盖)
-    // 提取原文件的后缀名 (比如 .jpg, .png)
-    const fileExtension = file.name.split('.').pop(); 
-    const fileName = `covers/${crypto.randomUUID()}.${fileExtension}`;
-    
-    // 4. 将 File 对象转换为 R2 认识的 ArrayBuffer 数据流
-    const arrayBuffer = await file.arrayBuffer();
-
-    // 5. 【核心上传动作】：将数据流写入 R2
-    await bucket.put(fileName, arrayBuffer, {
-      httpMetadata: {
-        contentType: file.type, // 告诉浏览器这是一张什么格式的图片，极其重要
-      },
-    });
-
-    // 6. 拼接图片的公网访问链接
-    // ⚠️ 注意：这里必须替换成你真实的 R2 公开域名！(见下方说明)
-    const publicDomain = "https://pub-55956733fff54a6b9e1d921def1c7805.r2.dev"; 
-    const coverUrl = `${publicDomain}/${fileName}`;
-
-    return { success: true, coverUrl };
-  } catch (error: any) {
-    console.error("上传封面失败:", error);
-    return { success: false, error: error.message };
-  }
-}
-
-// 新增这个向 R2 拿临时上传 URL 的方法
-export async function getPresignedUrl(fileName: string, contentType: string) {
-  try {
-    const { env } = await getCloudflareContext({ async: true });
-    
-    // 1. 挨个把变量取出来（去掉前后的空格，防止复制手抖）
-    const accountId = (env.R2_ACCOUNT_ID || "").trim();
-    const accessKeyId = (env.R2_ACCESS_KEY_ID || "").trim();
-    const secretAccessKey = (env.R2_SECRET_ACCESS_KEY || "").trim();
-    const bucketName = (env.R2_BUCKET_NAME || "").trim();
-    const publicDomain = (env.R2_PUBLIC_DOMAIN || "").trim();
-
-    // 2. 终极安检门：缺谁就大声喊出来！
-    if (!accountId || !accessKeyId || !secretAccessKey) {
-      throw new Error(
-        `服务器环境变量丢失！状态：AccountID[${!!accountId}] | AccessKey[${!!accessKeyId}] | SecretKey[${!!secretAccessKey}]`
-      );
-    }
-
-    const S3 = new S3Client({
-      region: "auto",
-      endpoint: `https://${accountId}.r2.cloudflarestorage.com`,
-      credentials: {
-        accessKeyId: accessKeyId,
-        secretAccessKey: secretAccessKey,
-      },
-    });
-
-    const uniqueFileName = `${Date.now()}-${fileName.replace(/\s+/g, '-')}`;
-    
-    const command = new PutObjectCommand({
-      Bucket: bucketName,
-      Key: uniqueFileName,
-      ContentType: contentType,
-    });
-
-    const uploadUrl = await getSignedUrl(S3, command, { expiresIn: 300 });
-    const finalUrl = `${publicDomain}/${uniqueFileName}`;
-
-    return { success: true, uploadUrl, finalUrl };
-  } catch (error: any) {
-    console.error("生成凭证致命错误:", error);
-    return { success: false, error: error.message };
+    return { success: false, error: "书库接口暂时不可用" };
   }
 }

@@ -1,10 +1,12 @@
+// src/components/dashboard/DashboardWidgets.tsx
 "use client";
 
 import React, { useState } from "react";
-import { motion } from "framer-motion";
+// 🚀 删除了无用的 framer-motion 引入，保持组件极度轻量
 import { BookOpen, CalendarDays, Flame, Check } from "lucide-react";
 
 export default function DashboardWidgets() {
+  // TODO: 下一步这里将接收从 Server 传过来的真实数据
   const yearReadCount = 12;
   const monthReadDays = 18;
   const [hasCheckedIn, setHasCheckedIn] = useState(false);
@@ -23,6 +25,7 @@ export default function DashboardWidgets() {
     if (hasCheckedIn) return;
     setHasCheckedIn(true);
     setWeekDays(prev => prev.map(d => d.isToday ? { ...d, isRead: true } : d));
+    // TODO: 下一步这里将调用 Server Action (如: recordTodayReading()) 写入 D1 数据库
   };
 
   return (
@@ -32,15 +35,12 @@ export default function DashboardWidgets() {
       <div className="relative group bg-slate-800/40 backdrop-blur-xl border border-white/5 rounded-3xl p-6 flex flex-col overflow-hidden shadow-xl hover:bg-slate-800/60 transition-colors duration-500">
         <div className="absolute -right-10 -top-10 w-32 h-32 bg-indigo-500/20 blur-3xl rounded-full pointer-events-none group-hover:bg-indigo-500/30 transition-colors duration-500"></div>
         
-        {/* 顶部标题居中 */}
         <div className="flex items-center justify-center gap-2 text-slate-400 mb-2 relative z-10">
           <BookOpen className="w-4 h-4 text-indigo-400" />
           <span className="font-bold text-sm tracking-widest">今年已读</span>
         </div>
         
-        {/* 🚀 核心修改：弹性铺满剩余空间，让数字绝对居中，并加入呼吸灯特效 */}
         <div className="relative z-10 flex-1 flex items-center justify-center">
-          {/* 数字背后的专属呼吸光晕 */}
           <div className="absolute inset-0 bg-indigo-500/10 blur-2xl rounded-full animate-pulse"></div>
           
           <div className="flex items-baseline gap-2 relative">
@@ -56,7 +56,6 @@ export default function DashboardWidgets() {
       <div className="relative group bg-slate-800/40 backdrop-blur-xl border border-white/5 rounded-3xl p-6 flex flex-col overflow-hidden shadow-xl hover:bg-slate-800/60 transition-colors duration-500">
         <div className="absolute -right-10 -top-10 w-32 h-32 bg-emerald-500/20 blur-3xl rounded-full pointer-events-none group-hover:bg-emerald-500/30 transition-colors duration-500"></div>
         
-        {/* 顶部标题居中 */}
         <div className="flex items-center justify-center relative z-10">
           <div className="flex items-center gap-2 text-slate-400">
             <CalendarDays className="w-4 h-4 text-emerald-400" />
@@ -64,7 +63,6 @@ export default function DashboardWidgets() {
           </div>
         </div>
 
-        {/* 🚀 核心修改：绝对居中 + 翡翠绿呼吸特效 */}
         <div className="relative z-10 flex-1 flex items-center justify-center mt-2 mb-4">
           <div className="absolute inset-0 bg-emerald-500/10 blur-2xl rounded-full animate-pulse"></div>
           

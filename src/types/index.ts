@@ -1,17 +1,31 @@
 // src/types/index.ts
 
-// 定义阅读状态的枚举 (类似后端的 Enum)
-export type ReadingStatus = 'UNREAD' | 'READING' | 'FINISHED';
+// ==========================================
+// 📚 书籍相关类型定义
+// ==========================================
 
-// 定义一本书的核心数据结构 (类似后端的 Entity / DTO)
+export type BookStatus = 'UNREAD' | 'READING' | 'FINISHED';
+
 export interface Book {
   id: string;
   title: string;
   author: string;
-  coverUrl: string;       // 封面图链接
-  status: ReadingStatus;  // 当前状态
-  progress: number;       // 阅读进度 (0-100)
-  tags: string[];         // 分类标签
-  addedAt: string;        // 入库时间
-  updatedAt: string;      // 最后阅读时间
+  coverUrl?: string;
+  status: BookStatus;
+  startTime?: string;
+  endTime?: string;
+  rating?: string;
+  tags?: string[];
+  addedAt?: string; // 数据库中的插入时间
+}
+
+// ==========================================
+// 📝 摘录与笔记类型定义
+// ==========================================
+
+export interface Excerpt {
+  id: string;
+  bookId: string;
+  content: string;
+  createdAt: string;
 }
