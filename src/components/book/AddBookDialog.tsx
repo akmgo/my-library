@@ -14,7 +14,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from "../ui/dialog";
-import { addBookToDB, searchBookByTitle, getPresignedUrl } from "../../app/actions";
+import { addBookToDB, searchBookByTitle, uploadCoverImage} from "../../app/actions";
 
 const DEFAULT_COVER = "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?q=80&w=1000&auto=format&fit=crop";
 
@@ -85,43 +85,34 @@ export default function AddBookDialog() {
     try {
       let finalCoverUrl = DEFAULT_COVER;
 
+      // 1. 如果有图片，先走原生后端上传
       if (selectedFile) {
-        // 1. 获取上传凭证
-        const presignRes = await getPresignedUrl(selectedFile.name, selectedFile.type);
-        if (!presignRes.success || !presignRes.uploadUrl) {
-          alert("❌ 获取 R2 上传凭证失败: " + presignRes.error);
+        const uploadData = new FormData();
+        uploadData.append("file", selectedFile);
+        
+        const uploadRes = await uploadCoverImage(uploadData);
+        
+        if (!uploadRes.success || !uploadRes.coverUrl) {
+          alert("❌ 封面上传失败: " + uploadRes.error);
           setIsUploading(false);
           return;
         }
-
-        // 2. 前端直传 R2
-        const uploadResponse = await fetch(presignRes.uploadUrl, {
-          method: "PUT",
-          body: selectedFile,
-          headers: { "Content-Type": selectedFile.type },
-        });
-
-        if (!uploadResponse.ok) {
-          throw new Error(`R2 拒绝了文件上传，状态码: ${uploadResponse.status}`);
-        }
-        finalCoverUrl = presignRes.finalUrl;
+        finalCoverUrl = uploadRes.coverUrl;
       }
 
-      // 3. 写入数据库
+      // 2. 图片传完了，直接存数据库
       const result = await addBookToDB({ title, author, coverUrl: finalCoverUrl });
 
       if (result.success) {
         formElement.reset();
         handleClearImage();
         setOpen(false);
-        
-        // 🚀 魔法：无感刷新页面，替代暴力的 window.location.reload()
         router.refresh();
       } else {
         alert("❌ 数据库保存失败：" + result.error);
       }
     } catch (error: any) {
-      alert("💥 发生致命异常: " + error.message);
+      alert("💥 发生网络异常: " + error.message);
     } finally {
       setIsUploading(false);
     }

@@ -4,8 +4,6 @@
 import { revalidatePath } from "next/cache";
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
-import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
-
 // 缓存键名常量，防止拼写错误
 const CACHE_KEY_ALL_BOOKS = "all_books_list";
 
@@ -195,69 +193,46 @@ export async function addExcerptToDB(bookId: string, content: string) {
 /**
  * [方案 A] 纯服务端上传：通过 R2 绑定直接写入
  */
-export async function uploadCoverToR2(formData: FormData) {
+// ============================================================================
+// 🚀 原生 R2 上传函数 (回归最初的实现！)
+// ============================================================================
+export async function uploadCoverImage(formData: FormData) {
   try {
     const file = formData.get("file") as File;
-    if (!file) return { success: false, error: "未接收到图片文件" };
+    if (!file || file.size === 0) return { success: false, error: "未检测到文件" };
 
-    const { env } = await getCloudflareContext({ async: true });
-    const bucket = env.COVER_BUCKET as any;
+    // 1. 获取 Cloudflare 上下文
+    let env: any = process.env;
+    try {
+      const ctx = await getCloudflareContext({ async: true });
+      if (ctx && ctx.env) env = ctx.env;
+    } catch (e) {}
 
-    if (!bucket) throw new Error("R2 存储桶未绑定");
+    // 2. 直接使用原生的 COVER_BUCKET 绑定！没有任何 SDK！
+    const bucket = env.COVER_BUCKET;
+    const publicDomain = env.R2_PUBLIC_DOMAIN;
 
-    const fileExtension = file.name.split('.').pop(); 
-    const fileName = `covers/${crypto.randomUUID()}.${fileExtension}`;
+    if (!bucket) {
+      return { success: false, error: "未找到 COVER_BUCKET 绑定！" };
+    }
+
+    // 3. 转换文件格式并生成文件名
     const arrayBuffer = await file.arrayBuffer();
+    const ext = file.name.split('.').pop() || 'png';
+    const safeFileName = `${Date.now()}-${crypto.randomUUID().slice(0, 8)}.${ext}`;
 
-    await bucket.put(fileName, arrayBuffer, {
+    // 4. 原生 PUT 上传 (速度极快，无需跨域)
+    await bucket.put(safeFileName, arrayBuffer, {
       httpMetadata: { contentType: file.type },
     });
 
-    // 替换为你的真实公开域名
-    const publicDomain = "https://pub-55956733fff54a6b9e1d921def1c7805.r2.dev"; 
-    return { success: true, coverUrl: `${publicDomain}/${fileName}` };
+    return { 
+      success: true, 
+      coverUrl: `${publicDomain}/${safeFileName}` 
+    };
+
   } catch (error: any) {
-    console.error("上传封面失败:", error);
-    return { success: false, error: error.message };
-  }
-}
-
-/**
- * [方案 B] 客户端直传：获取 AWS S3 预签名 URL
- */
-export async function getPresignedUrl(fileName: string, contentType: string) {
-  try {
-    const { env } = await getCloudflareContext({ async: true });
-    
-    const accountId = (env.R2_ACCOUNT_ID || "").trim();
-    const accessKeyId = (env.R2_ACCESS_KEY_ID || "").trim();
-    const secretAccessKey = (env.R2_SECRET_ACCESS_KEY || "").trim();
-    const bucketName = (env.R2_BUCKET_NAME || "").trim();
-    const publicDomain = (env.R2_PUBLIC_DOMAIN || "").trim();
-
-    if (!accountId || !accessKeyId || !secretAccessKey) {
-      throw new Error(`缺少 S3 环境变量配置！`);
-    }
-
-    const S3 = new S3Client({
-      region: "auto",
-      endpoint: `https://${accountId}.r2.cloudflarestorage.com`,
-      credentials: { accessKeyId, secretAccessKey },
-    });
-
-    const uniqueFileName = `${Date.now()}-${fileName.replace(/\s+/g, '-')}`;
-    
-    const command = new PutObjectCommand({
-      Bucket: bucketName,
-      Key: uniqueFileName,
-      ContentType: contentType,
-    });
-
-    const uploadUrl = await getSignedUrl(S3, command, { expiresIn: 300 });
-
-    return { success: true, uploadUrl, finalUrl: `${publicDomain}/${uniqueFileName}` };
-  } catch (error: any) {
-    console.error("生成凭证致命错误:", error);
+    console.error("封面上传失败:", error);
     return { success: false, error: error.message };
   }
 }
