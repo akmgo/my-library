@@ -310,14 +310,14 @@ export async function getDashboardStats(params: {
 }
 
 // ============================================================================
-// ✍️ 写入打卡记录 - 极简版
+// ✍️ 写入打卡记录 (自动绑定当前在读的书籍)
 // ============================================================================
 export async function recordTodayReading(dateStr: string) {
   try {
     const { env } = await getCloudflareContext({ async: true });
     const db = env.library_db as any;
 
-    // 1. 检查今天是否已经打过卡 (🧹 删除了 action_type 过滤)
+    // 1. 检查今天是否已经打过卡，防止重复
     const existing = await db
       .prepare("SELECT id FROM reading_logs WHERE date = ?")
       .bind(dateStr)
@@ -327,14 +327,23 @@ export async function recordTodayReading(dateStr: string) {
       return { success: true, message: "今日已打卡" };
     }
 
-    // 2. 生成极简字段数据
+    // ✨ 核心新增：去 books 表里寻找当前状态为 'READING' 的那本书
+    // 因为你规定了同一时间只有一本，所以 LIMIT 1 就能精准命中
+    const readingBook = await db
+      .prepare("SELECT id FROM books WHERE status = 'READING' LIMIT 1")
+      .first();
+
+    // 如果当前有在读的书，提取它的 id；如果没有，则设为 null (防止断档报错)
+    const currentBookId = readingBook ? readingBook.id : null;
+
+    // 2. 生成打卡所需的数据
     const newId = crypto.randomUUID();
     const now = new Date().toISOString();
 
-    // 3. 真实写入数据库 (🧹 移除了 action_type 字段的插入)
+    // 3. 真实写入数据库，把 book_id 一并存进去！
     await db
-      .prepare("INSERT INTO reading_logs (id, date, created_at) VALUES (?, ?, ?)")
-      .bind(newId, dateStr, now)
+      .prepare("INSERT INTO reading_logs (id, date, book_id, created_at) VALUES (?, ?, ?, ?)")
+      .bind(newId, dateStr, currentBookId, now)
       .run();
 
     return { success: true };
