@@ -14,7 +14,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from "../ui/dialog";
-import { addBookToDB, searchBookByTitle, uploadCoverImage} from "../../app/actions";
+import { addBookToDB, searchBookByTitle, uploadCoverImage, getPresignedUrl} from "../../app/actions";
 
 const DEFAULT_COVER = "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?q=80&w=1000&auto=format&fit=crop";
 
@@ -85,34 +85,41 @@ export default function AddBookDialog() {
     try {
       let finalCoverUrl = DEFAULT_COVER;
 
-      // 1. 如果有图片，先走原生后端上传
       if (selectedFile) {
-        const uploadData = new FormData();
-        uploadData.append("file", selectedFile);
-        
-        const uploadRes = await uploadCoverImage(uploadData);
-        
-        if (!uploadRes.success || !uploadRes.coverUrl) {
-          alert("❌ 封面上传失败: " + uploadRes.error);
+        // 1. 恢复：获取上传凭证
+        const presignRes = await getPresignedUrl(selectedFile.name, selectedFile.type);
+        if (!presignRes.success || !presignRes.uploadUrl) {
+          alert("❌ 获取凭证失败: " + presignRes.error);
           setIsUploading(false);
           return;
         }
-        finalCoverUrl = uploadRes.coverUrl;
+
+        // 2. 恢复：前端直接 PUT 到 R2
+        const uploadResponse = await fetch(presignRes.uploadUrl, {
+          method: "PUT",
+          body: selectedFile,
+          headers: { "Content-Type": selectedFile.type },
+        });
+
+        if (!uploadResponse.ok) {
+          throw new Error(`R2 状态码异常: ${uploadResponse.status}`);
+        }
+        finalCoverUrl = presignRes.finalUrl;
       }
 
-      // 2. 图片传完了，直接存数据库
+      // 3. 存入 D1
       const result = await addBookToDB({ title, author, coverUrl: finalCoverUrl });
 
       if (result.success) {
         formElement.reset();
         handleClearImage();
         setOpen(false);
-        router.refresh();
+        router.refresh(); // 或 window.location.reload()
       } else {
-        alert("❌ 数据库保存失败：" + result.error);
+        alert("❌ 保存失败：" + result.error);
       }
     } catch (error: any) {
-      alert("💥 发生网络异常: " + error.message);
+      alert("💥 发生致命异常: " + error.message);
     } finally {
       setIsUploading(false);
     }

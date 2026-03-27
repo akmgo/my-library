@@ -4,6 +4,7 @@
 import { revalidatePath } from "next/cache";
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 // 缓存键名常量，防止拼写错误
 const CACHE_KEY_ALL_BOOKS = "all_books_list";
 
@@ -233,6 +234,55 @@ export async function uploadCoverImage(formData: FormData) {
 
   } catch (error: any) {
     console.error("封面上传失败:", error);
+    return { success: false, error: error.message };
+  }
+}
+
+// ============================================================================
+// 🚀 恢复 R2 凭证直传逻辑 (已修复批量重名和路径 Bug)
+// ============================================================================
+export async function getPresignedUrl(fileName: string, contentType: string) {
+  try {
+    const { env } = await getCloudflareContext({ async: true });
+    
+    // 从上下文中提取你配置的那些变量
+    const accountId = env.R2_ACCOUNT_ID;
+    const accessKeyId = env.R2_ACCESS_KEY_ID;
+    const secretAccessKey = env.R2_SECRET_ACCESS_KEY;
+    const bucketName = env.R2_BUCKET_NAME;
+    const publicDomain = env.R2_PUBLIC_DOMAIN;
+
+    if (!accountId || !accessKeyId || !secretAccessKey || !bucketName) {
+      return { success: false, error: "缺少 R2 环境变量配置" };
+    }
+
+    const S3 = new S3Client({
+      region: "auto",
+      endpoint: `https://${accountId}.r2.cloudflarestorage.com`,
+      credentials: {
+        accessKeyId: accessKeyId as string,
+        secretAccessKey: secretAccessKey as string,
+      },
+      // ⚠️ 极其关键：强制路径模式，防止批量时 DNS 报错
+      forcePathStyle: true,
+    });
+
+    // ⚠️ 极其关键：加入 UUID 防止批量导入时同一毫秒生成相同的文件名发生覆盖
+    const safeFileName = fileName.replace(/\s+/g, '-');
+    const uniqueFileName = `covers/${Date.now()}-${crypto.randomUUID().slice(0, 6)}-${safeFileName}`;
+
+    const command = new PutObjectCommand({
+      Bucket: bucketName as string,
+      Key: uniqueFileName,
+      ContentType: contentType,
+    });
+
+    const uploadUrl = await getSignedUrl(S3, command, { expiresIn: 300 });
+    const finalUrl = `${publicDomain}/${uniqueFileName}`;
+
+    return { success: true, uploadUrl, finalUrl };
+  } catch (error: any) {
+    console.error("生成凭证失败:", error);
     return { success: false, error: error.message };
   }
 }
