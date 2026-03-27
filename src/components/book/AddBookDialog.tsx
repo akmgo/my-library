@@ -71,6 +71,7 @@ export default function AddBookDialog() {
   // ============================================================================
   // 🚀 提交表单 (前端直传 R2 + 存入 D1)
   // ============================================================================
+  // 【核心修改 2】：重构为企业级凭证直传逻辑
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (isUploading) return;
@@ -86,37 +87,44 @@ export default function AddBookDialog() {
       let finalCoverUrl = DEFAULT_COVER;
 
       if (selectedFile) {
-        // 1. 恢复：获取上传凭证
+        // 第一步：向服务器要 R2 临时直传通行证
         const presignRes = await getPresignedUrl(selectedFile.name, selectedFile.type);
+        
         if (!presignRes.success || !presignRes.uploadUrl) {
-          alert("❌ 获取凭证失败: " + presignRes.error);
+          alert("❌ 获取 R2 上传凭证失败: " + presignRes.error);
           setIsUploading(false);
           return;
         }
 
-        // 2. 恢复：前端直接 PUT 到 R2
+        // 第二步：前端浏览器直接把几兆的大图塞给 R2！(彻底解放 Next.js 内存)
         const uploadResponse = await fetch(presignRes.uploadUrl, {
           method: "PUT",
           body: selectedFile,
-          headers: { "Content-Type": selectedFile.type },
+          headers: {
+            "Content-Type": selectedFile.type,
+          },
         });
 
         if (!uploadResponse.ok) {
-          throw new Error(`R2 状态码异常: ${uploadResponse.status}`);
+          throw new Error(`R2 拒绝了文件上传，状态码: ${uploadResponse.status}`);
         }
+
+        // 拿到最终的干净图床链接
         finalCoverUrl = presignRes.finalUrl;
       }
 
-      // 3. 存入 D1
+      // 第三步：图片搞定，只把轻量级的文本信息存进 D1 数据库
       const result = await addBookToDB({ title, author, coverUrl: finalCoverUrl });
-
+      
       if (result.success) {
-        formElement.reset();
-        handleClearImage();
-        setOpen(false);
-        router.refresh(); // 或 window.location.reload()
+        formElement.reset(); 
+        handleClearImage(); 
+        setOpen(false); 
+        
+        // 强制刷新页面，暴力打破缓存，新书绝对上墙！
+        window.location.reload(); 
       } else {
-        alert("❌ 保存失败：" + result.error);
+        alert("❌ 数据库保存失败：" + result.error);
       }
     } catch (error: any) {
       alert("💥 发生致命异常: " + error.message);
@@ -124,6 +132,61 @@ export default function AddBookDialog() {
       setIsUploading(false);
     }
   };
+
+
+  // const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  //   e.preventDefault();
+  //   if (isUploading) return;
+
+  //   const formData = new FormData(e.currentTarget);
+  //   const title = formData.get("title") as string;
+  //   const author = formData.get("author") as string;
+  //   const formElement = e.currentTarget;
+
+  //   setIsUploading(true);
+
+  //   try {
+  //     let finalCoverUrl = DEFAULT_COVER;
+
+  //     if (selectedFile) {
+  //       // 1. 恢复：获取上传凭证
+  //       const presignRes = await getPresignedUrl(selectedFile.name, selectedFile.type);
+  //       if (!presignRes.success || !presignRes.uploadUrl) {
+  //         alert("❌ 获取凭证失败: " + presignRes.error);
+  //         setIsUploading(false);
+  //         return;
+  //       }
+
+  //       // 2. 恢复：前端直接 PUT 到 R2
+  //       const uploadResponse = await fetch(presignRes.uploadUrl, {
+  //         method: "PUT",
+  //         body: selectedFile,
+  //         headers: { "Content-Type": selectedFile.type },
+  //       });
+
+  //       if (!uploadResponse.ok) {
+  //         throw new Error(`R2 状态码异常: ${uploadResponse.status}`);
+  //       }
+  //       finalCoverUrl = presignRes.finalUrl;
+  //     }
+
+  //     // 3. 存入 D1
+  //     const result = await addBookToDB({ title, author, coverUrl: finalCoverUrl });
+
+  //     if (result.success) {
+  //       formElement.reset();
+  //       handleClearImage();
+  //       setOpen(false);
+  //       router.refresh(); // 或 window.location.reload()
+  //     } else {
+  //       alert("❌ 保存失败：" + result.error);
+  //     }
+  //   } catch (error: any) {
+  //     alert("💥 发生致命异常: " + error.message);
+  //   } finally {
+  //     setIsUploading(false);
+  //   }
+  // };
 
   return (
     <>
@@ -251,3 +314,5 @@ export default function AddBookDialog() {
     </>
   );
 }
+
+  

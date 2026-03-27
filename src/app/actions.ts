@@ -238,54 +238,6 @@ export async function uploadCoverImage(formData: FormData) {
   }
 }
 
-// ============================================================================
-// 🚀 恢复 R2 凭证直传逻辑 (已修复批量重名和路径 Bug)
-// ============================================================================
-export async function getPresignedUrl(fileName: string, contentType: string) {
-  try {
-    const { env } = await getCloudflareContext({ async: true });
-    
-    // 从上下文中提取你配置的那些变量
-    const accountId = env.R2_ACCOUNT_ID;
-    const accessKeyId = env.R2_ACCESS_KEY_ID;
-    const secretAccessKey = env.R2_SECRET_ACCESS_KEY;
-    const bucketName = env.R2_BUCKET_NAME;
-    const publicDomain = env.R2_PUBLIC_DOMAIN;
-
-    if (!accountId || !accessKeyId || !secretAccessKey || !bucketName) {
-      return { success: false, error: "缺少 R2 环境变量配置" };
-    }
-
-    const S3 = new S3Client({
-      region: "auto",
-      endpoint: `https://${accountId}.r2.cloudflarestorage.com`,
-      credentials: {
-        accessKeyId: accessKeyId as string,
-        secretAccessKey: secretAccessKey as string,
-      },
-      // ⚠️ 极其关键：强制路径模式，防止批量时 DNS 报错
-      forcePathStyle: true,
-    });
-
-    // ⚠️ 极其关键：加入 UUID 防止批量导入时同一毫秒生成相同的文件名发生覆盖
-    const safeFileName = fileName.replace(/\s+/g, '-');
-    const uniqueFileName = `covers/${Date.now()}-${crypto.randomUUID().slice(0, 6)}-${safeFileName}`;
-
-    const command = new PutObjectCommand({
-      Bucket: bucketName as string,
-      Key: uniqueFileName,
-      ContentType: contentType,
-    });
-
-    const uploadUrl = await getSignedUrl(S3, command, { expiresIn: 300 });
-    const finalUrl = `${publicDomain}/${uniqueFileName}`;
-
-    return { success: true, uploadUrl, finalUrl };
-  } catch (error: any) {
-    console.error("生成凭证失败:", error);
-    return { success: false, error: error.message };
-  }
-}
 
 // ============================================================================
 // 🌐 外部服务集成 (External APIs)
@@ -316,5 +268,35 @@ export async function searchBookByTitle(title: string) {
   } catch (error: any) {
     console.error("搜索失败:", error);
     return { success: false, error: "书库接口暂时不可用" };
+  }
+}
+
+// 新增这个向 R2 拿临时上传 URL 的方法
+export async function getPresignedUrl(fileName: string, contentType: string) {
+  try {
+    const { env } = await getCloudflareContext({ async: true });
+    // 这里的 env.R2_ACCOUNT_ID 等，就会自动读取你刚才在线上填的那些环境变量啦！
+    const S3 = new S3Client({
+      region: "auto",
+      endpoint: `https://${env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
+      credentials: {
+        accessKeyId: env.R2_ACCESS_KEY_ID as string,
+        secretAccessKey: env.R2_SECRET_ACCESS_KEY as string,
+      },
+    });
+
+    const uniqueFileName = `${Date.now()}-${fileName.replace(/\s+/g, '-')}`;
+    const command = new PutObjectCommand({
+      Bucket: env.R2_BUCKET_NAME as string,
+      Key: uniqueFileName,
+      ContentType: contentType,
+    });
+
+    const uploadUrl = await getSignedUrl(S3, command, { expiresIn: 300 });
+    const finalUrl = `${env.R2_PUBLIC_DOMAIN}/${uniqueFileName}`;
+
+    return { success: true, uploadUrl, finalUrl };
+  } catch (error: any) {
+    return { success: false, error: error.message };
   }
 }
