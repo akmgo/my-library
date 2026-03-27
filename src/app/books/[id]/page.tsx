@@ -24,27 +24,21 @@ import { getBookDetail, updateBook } from "../../actions";
 
 // === 常量配置 ===
 const PREDEFINED_TAGS = [
-  "玄幻",
-  "仙侠",
-  "历史",
-  "哲学",
-  "投资",
-  "编程",
-  "文学",
-  "科幻",
-  "商业",
-  "心理",
-  "社会",
-  "传记",
-  "悬疑",
-  "奇幻",
-  "武侠",
-  "经典",
-  "轻小说",
-  "管理",
-  "艺术",
-  "科普",
+  // 人文与历史
+  "哲学", "历史", "人文", "经典",
+  // 社会与科学
+  "社会", "政治", "经济", "法律",
+  // 认知与成长
+  "心理", "思考", "成长", "教育",
+  // 商业与专业
+  "管理", "商业", "投资", "技术",
+  // 文学与虚构
+  "文学", "传记",
+  // 其他探索
+  "艺术", "宗教", "科普", "编程"
 ];
+
+
 const STATUS_OPTIONS = [
   { id: "UNREAD", label: "待读" },
   { id: "READING", label: "在读" },
@@ -214,12 +208,12 @@ function BookContent({ params }: { params: Promise<{ id: string }> }) {
               <label className="flex items-center gap-2 text-slate-400 font-medium text-sm">
                 <BookOpen className="w-4 h-4" /> 当前状态
               </label>
-              <div className="flex p-1.5 bg-slate-950/50 border border-slate-700/50 rounded-xl relative">
+              <div className="flex p-1 h-11 bg-slate-950/50 border border-slate-700/50 rounded-xl relative">
                 {STATUS_OPTIONS.map((opt) => (
                   <button
                     key={opt.id}
                     onClick={() => handleBookUpdate({ status: opt.id })}
-                    className={`relative flex-1 py-2 text-sm font-medium transition-colors duration-300 z-10 ${
+                    className={`relative flex-1 flex items-center justify-center text-sm font-medium transition-colors duration-300 z-10 ${
                       book.status === opt.id
                         ? "text-white"
                         : "text-slate-500 hover:text-slate-300"
@@ -254,7 +248,7 @@ function BookContent({ params }: { params: Promise<{ id: string }> }) {
                   onChange={(e) =>
                     handleBookUpdate({ startTime: e.target.value })
                   }
-                  className="bg-slate-950/50 border border-slate-700/50 text-white rounded-xl px-4 py-2 outline-none focus:border-indigo-500 transition-colors [&::-webkit-calendar-picker-indicator]:filter [&::-webkit-calendar-picker-indicator]:invert [&::-webkit-calendar-picker-indicator]:opacity-60 [&::-webkit-calendar-picker-indicator]:hover:opacity-100"
+                  className="bg-slate-950/50 border border-slate-700/50 text-white rounded-xl px-4 h-11 w-full outline-none focus:border-indigo-500 cursor-pointer transition-colors [&::-webkit-calendar-picker-indicator]:filter [&::-webkit-calendar-picker-indicator]:invert [&::-webkit-calendar-picker-indicator]:opacity-60 [&::-webkit-calendar-picker-indicator]:hover:opacity-100"
                 />
               </div>
             )}
@@ -269,7 +263,7 @@ function BookContent({ params }: { params: Promise<{ id: string }> }) {
                   onChange={(e) =>
                     handleBookUpdate({ endTime: e.target.value })
                   }
-                  className="bg-slate-950/50 border border-slate-700/50 text-white rounded-xl px-4 py-2 outline-none focus:border-indigo-500 transition-colors [&::-webkit-calendar-picker-indicator]:filter [&::-webkit-calendar-picker-indicator]:invert [&::-webkit-calendar-picker-indicator]:opacity-60 [&::-webkit-calendar-picker-indicator]:hover:opacity-100"
+                  className="bg-slate-950/50 border border-slate-700/50 text-white rounded-xl px-4 h-11 w-full outline-none focus:border-indigo-500 cursor-pointer transition-colors [&::-webkit-calendar-picker-indicator]:filter [&::-webkit-calendar-picker-indicator]:invert [&::-webkit-calendar-picker-indicator]:opacity-60 [&::-webkit-calendar-picker-indicator]:hover:opacity-100"
                 />
               </div>
             )}
