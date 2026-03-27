@@ -116,12 +116,8 @@ async function BookSections() {
           <div className="absolute bottom-0 right-0 w-[400px] h-[400px] bg-purple-600/10 blur-[100px] rounded-full pointer-events-none translate-x-1/3 translate-y-1/3" />
 
           <div className="relative z-20 flex flex-col h-full">
-            <div className="mb-6 flex items-center justify-between pointer-events-auto">
-              <h2 className="text-2xl font-bold tracking-tight text-white">阅读看板</h2>
-              <span className="text-xs font-medium text-indigo-400 border border-indigo-500/30 bg-indigo-500/10 px-3 py-1 rounded-full flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse"></span>Live Data
-              </span>
-            </div>
+            {/* 🚀 这里的 mb-6 头部已经被移走了，交给子组件内部自己渲染 */}
+            
             <div className="flex-1 pointer-events-auto w-full flex flex-col justify-center">
               <DashboardWidgets />
             </div>

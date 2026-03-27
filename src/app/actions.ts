@@ -187,62 +187,6 @@ export async function addExcerptToDB(bookId: string, content: string) {
   }
 }
 
-// ============================================================================
-// ☁️ 文件存储 (R2 Storage)
-// ============================================================================
-
-/**
- * [方案 A] 纯服务端上传：通过 R2 绑定直接写入
- */
-// ============================================================================
-// 🚀 原生 R2 上传函数 (回归最初的实现！)
-// ============================================================================
-export async function uploadCoverImage(formData: FormData) {
-  try {
-    const file = formData.get("file") as File;
-    if (!file || file.size === 0) return { success: false, error: "未检测到文件" };
-
-    // 1. 获取 Cloudflare 上下文
-    let env: any = process.env;
-    try {
-      const ctx = await getCloudflareContext({ async: true });
-      if (ctx && ctx.env) env = ctx.env;
-    } catch (e) {}
-
-    // 2. 直接使用原生的 COVER_BUCKET 绑定！没有任何 SDK！
-    const bucket = env.COVER_BUCKET;
-    const publicDomain = env.R2_PUBLIC_DOMAIN;
-
-    if (!bucket) {
-      return { success: false, error: "未找到 COVER_BUCKET 绑定！" };
-    }
-
-    // 3. 转换文件格式并生成文件名
-    const arrayBuffer = await file.arrayBuffer();
-    const ext = file.name.split('.').pop() || 'png';
-    const safeFileName = `${Date.now()}-${crypto.randomUUID().slice(0, 8)}.${ext}`;
-
-    // 4. 原生 PUT 上传 (速度极快，无需跨域)
-    await bucket.put(safeFileName, arrayBuffer, {
-      httpMetadata: { contentType: file.type },
-    });
-
-    return { 
-      success: true, 
-      coverUrl: `${publicDomain}/${safeFileName}` 
-    };
-
-  } catch (error: any) {
-    console.error("封面上传失败:", error);
-    return { success: false, error: error.message };
-  }
-}
-
-
-// ============================================================================
-// 🌐 外部服务集成 (External APIs)
-// ============================================================================
-
 /**
  * 联网抓取书籍基本信息 (OpenLibrary)
  */
@@ -322,32 +266,80 @@ export async function getPresignedUrl(fileName: string, contentType: string) {
   }
 }
 
-// // 新增这个向 R2 拿临时上传 URL 的方法
-// export async function getPresignedUrl(fileName: string, contentType: string) {
-//   try {
-//     const { env } = await getCloudflareContext({ async: true });
-//     // 这里的 env.R2_ACCOUNT_ID 等，就会自动读取你刚才在线上填的那些环境变量啦！
-//     const S3 = new S3Client({
-//       region: "auto",
-//       endpoint: `https://${env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
-//       credentials: {
-//         accessKeyId: env.R2_ACCESS_KEY_ID as string,
-//         secretAccessKey: env.R2_SECRET_ACCESS_KEY as string,
-//       },
-//     });
+export async function getDashboardStats(params: {
+  year: string;       
+  month: string;      
+  weekDates: string[]; 
+}) {
+  try {
+    const { env } = await getCloudflareContext({ async: true });
+    const db = env.library_db as any;
+    if (!db) throw new Error("数据库连接失败");
 
-//     const uniqueFileName = `${Date.now()}-${fileName.replace(/\s+/g, '-')}`;
-//     const command = new PutObjectCommand({
-//       Bucket: env.R2_BUCKET_NAME as string,
-//       Key: uniqueFileName,
-//       ContentType: contentType,
-//     });
+    // 1. 今年已读本数 (保持不变)
+    const yearCountRes = await db
+      .prepare("SELECT COUNT(*) as count FROM books WHERE status = 'FINISHED' AND endTime LIKE ?")
+      .bind(`${params.year}-%`)
+      .first();
 
-//     const uploadUrl = await getSignedUrl(S3, command, { expiresIn: 300 });
-//     const finalUrl = `${env.R2_PUBLIC_DOMAIN}/${uniqueFileName}`;
+    // 2. 本月阅读天数 (🧹 删除了 action_type 过滤)
+    const monthDaysRes = await db
+      .prepare("SELECT COUNT(DISTINCT date) as count FROM reading_logs WHERE date LIKE ?")
+      .bind(`${params.month}-%`)
+      .first();
 
-//     return { success: true, uploadUrl, finalUrl };
-//   } catch (error: any) {
-//     return { success: false, error: error.message };
-//   }
-// }
+    // 3. 本周打卡轨迹 (🧹 删除了 action_type 过滤)
+    const placeholders = params.weekDates.map(() => "?").join(",");
+    const weekLogsRes = await db
+      .prepare(`SELECT DISTINCT date FROM reading_logs WHERE date IN (${placeholders})`)
+      .bind(...params.weekDates)
+      .all();
+
+    const checkedInDates = weekLogsRes.results.map((r: any) => r.date);
+
+    return {
+      success: true,
+      yearReadCount: yearCountRes?.count || 0,
+      monthReadDays: monthDaysRes?.count || 0,
+      checkedInDates: checkedInDates,
+    };
+  } catch (error: any) {
+    console.error("获取仪表盘数据失败:", error);
+    return { success: false, error: error.message };
+  }
+}
+
+// ============================================================================
+// ✍️ 写入打卡记录 - 极简版
+// ============================================================================
+export async function recordTodayReading(dateStr: string) {
+  try {
+    const { env } = await getCloudflareContext({ async: true });
+    const db = env.library_db as any;
+
+    // 1. 检查今天是否已经打过卡 (🧹 删除了 action_type 过滤)
+    const existing = await db
+      .prepare("SELECT id FROM reading_logs WHERE date = ?")
+      .bind(dateStr)
+      .first();
+
+    if (existing) {
+      return { success: true, message: "今日已打卡" };
+    }
+
+    // 2. 生成极简字段数据
+    const newId = crypto.randomUUID();
+    const now = new Date().toISOString();
+
+    // 3. 真实写入数据库 (🧹 移除了 action_type 字段的插入)
+    await db
+      .prepare("INSERT INTO reading_logs (id, date, created_at) VALUES (?, ?, ?)")
+      .bind(newId, dateStr, now)
+      .run();
+
+    return { success: true };
+  } catch (error: any) {
+    console.error("打卡写入失败:", error);
+    return { success: false, error: error.message };
+  }
+}

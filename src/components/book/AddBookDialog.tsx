@@ -14,7 +14,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from "../ui/dialog";
-import { addBookToDB, searchBookByTitle, uploadCoverImage, getPresignedUrl} from "../../app/actions";
+import { addBookToDB, searchBookByTitle, getPresignedUrl} from "../../app/actions";
 
 const DEFAULT_COVER = "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?q=80&w=1000&auto=format&fit=crop";
 
