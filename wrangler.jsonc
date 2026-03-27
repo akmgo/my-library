@@ -1,6 +1,6 @@
 {
 	"$schema": "node_modules/wrangler/config-schema.json",
-	"name": "my-library-worker",
+	"name": "my-library",
 	"compatibility_date": "2024-09-23",
 	"pages_build_output_dir": ".open-next/assets",
 	"compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
