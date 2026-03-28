@@ -26,13 +26,13 @@ export const dynamic = "force-dynamic";
 function LibrarySkeleton() {
   return (
     <div className="w-full flex flex-col gap-10 opacity-70">
-      <div className="w-full h-[300px] rounded-[2.5rem] bg-slate-900 border border-slate-800 flex flex-col items-center justify-center shadow-2xl animate-pulse">
+      <div className="w-full h-[300px] rounded-[2.5rem] bg-slate-200/50 dark:bg-slate-900 border border-white dark:border-slate-800 flex flex-col items-center justify-center shadow-2xl animate-pulse">
         <Loader2 className="w-10 h-10 text-slate-600 animate-spin mb-4" />
         <p className="text-slate-500 tracking-widest">正在点亮书房...</p>
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
-        <div className="h-[400px] rounded-[2.5rem] bg-slate-900 border border-slate-800 animate-pulse" />
-        <div className="h-[400px] rounded-[2.5rem] bg-slate-900 border border-slate-800 animate-pulse" />
+        <div className="h-[400px] rounded-[2.5rem] bg-slate-200/50 dark:bg-slate-900 border border-white dark:border-slate-800 animate-pulse" />
+        <div className="h-[400px] rounded-[2.5rem] bg-slate-200/50 dark:bg-slate-900 border border-white dark:border-slate-800 animate-pulse" />
       </div>
     </div>
   );
@@ -69,14 +69,16 @@ async function BookSections() {
       <section className="w-full grid grid-cols-1 xl:grid-cols-2 gap-10 mb-12">
         
         {/* 左半侧：当前在读 */}
-        <div className="relative overflow-hidden rounded-[2.5rem] bg-slate-900 p-8 md:p-10 shadow-2xl">
-          <div className="absolute top-0 left-0 w-[500px] h-[500px] bg-blue-600/10 blur-[100px] rounded-full pointer-events-none -translate-x-1/2 -translate-y-1/2" />
-          <div className="absolute bottom-0 right-0 w-[400px] h-[400px] bg-purple-600/10 blur-[100px] rounded-full pointer-events-none translate-x-1/3 translate-y-1/3" />
+        <div className="relative overflow-hidden rounded-[2.5rem] bg-white/60 dark:bg-slate-900 p-8 md:p-10 shadow-2xl border border-white/60 dark:border-transparent backdrop-blur-2xl transition-colors duration-500">
+          {/* 内部光晕双端适配 */}
+          <div className="absolute top-0 left-0 w-[500px] h-[500px] bg-blue-300/30 dark:bg-blue-600/10 blur-[100px] rounded-full pointer-events-none -translate-x-1/2 -translate-y-1/2 transition-colors duration-500" />
+          <div className="absolute bottom-0 right-0 w-[400px] h-[400px] bg-purple-300/30 dark:bg-purple-600/10 blur-[100px] rounded-full pointer-events-none translate-x-1/3 translate-y-1/3 transition-colors duration-500" />
 
           <div className="relative z-20 flex flex-col h-full">
             <div className="mb-6 flex items-center justify-between pointer-events-auto">
-              <h2 className="text-2xl font-bold tracking-tight text-white">当前在读</h2>
-              <span className="text-sm font-medium text-slate-300">{readingBooks.length} 本</span>
+              {/* 文字颜色双端适配 */}
+              <h2 className="text-2xl font-bold tracking-tight text-slate-800 dark:text-white">当前在读</h2>
+              <span className="text-sm font-medium text-slate-500 dark:text-slate-300">{readingBooks.length} 本</span>
             </div>
 
             <div className="flex-1 flex flex-col gap-6 pointer-events-auto">
@@ -108,13 +110,12 @@ async function BookSections() {
         </div>
 
         {/* 右半侧：数据看板 */}
-        <div className="relative overflow-hidden rounded-[2.5rem] bg-slate-900 p-8 md:p-10 shadow-2xl flex flex-col border border-slate-800/50">
-          <div className="absolute top-0 left-0 w-[500px] h-[500px] bg-blue-600/10 blur-[100px] rounded-full pointer-events-none -translate-x-1/2 -translate-y-1/2" />
-          <div className="absolute bottom-0 right-0 w-[400px] h-[400px] bg-purple-600/10 blur-[100px] rounded-full pointer-events-none translate-x-1/3 translate-y-1/3" />
+        <div className="relative overflow-hidden rounded-[2.5rem] bg-white/60 dark:bg-slate-900 p-8 md:p-10 shadow-2xl flex flex-col border border-white/60 dark:border-slate-800/50 backdrop-blur-2xl transition-colors duration-500">
+          {/* 内部光晕双端适配 */}
+          <div className="absolute top-0 left-0 w-[500px] h-[500px] bg-blue-300/30 dark:bg-blue-600/10 blur-[100px] rounded-full pointer-events-none -translate-x-1/2 -translate-y-1/2 transition-colors duration-500" />
+          <div className="absolute bottom-0 right-0 w-[400px] h-[400px] bg-purple-300/30 dark:bg-purple-600/10 blur-[100px] rounded-full pointer-events-none translate-x-1/3 translate-y-1/3 transition-colors duration-500" />
 
           <div className="relative z-20 flex flex-col h-full">
-            {/* 🚀 这里的 mb-6 头部已经被移走了，交给子组件内部自己渲染 */}
-            
             <div className="flex-1 pointer-events-auto w-full flex flex-col justify-center">
               <DashboardWidgets />
             </div>
@@ -126,11 +127,12 @@ async function BookSections() {
       <section className="w-full grid grid-cols-1 lg:grid-cols-2 gap-10">
         
         {/* 已读列表 */}
-        <div className="relative overflow-hidden rounded-[2.5rem] bg-slate-800/30 backdrop-blur-xl p-8 md:p-10 shadow-2xl border border-white/10 hover:bg-slate-800/40 transition-colors duration-500">
+        <div className="relative overflow-hidden rounded-[2.5rem] bg-white/40 dark:bg-slate-800/30 backdrop-blur-xl p-8 md:p-10 shadow-xl border border-white/60 dark:border-white/10 hover:bg-white/60 dark:hover:bg-slate-800/40 transition-colors duration-500">
           <div className="relative z-20 flex flex-col h-full">
             <div className="mb-8 flex items-center justify-between pointer-events-auto">
-              <h2 className="text-2xl font-bold tracking-tight text-white">已读</h2>
-              <span className="text-sm font-medium text-slate-300">{finishedBooks.length} 本</span>
+              {/* 文字颜色适配 */}
+              <h2 className="text-2xl font-bold tracking-tight text-slate-800 dark:text-white">已读</h2>
+              <span className="text-sm font-medium text-slate-500 dark:text-slate-300">{finishedBooks.length} 本</span>
             </div>
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
               {finishedBooks.map((book) => (
@@ -143,11 +145,12 @@ async function BookSections() {
         </div>
 
         {/* 待读列表 */}
-        <div className="relative overflow-hidden rounded-[2.5rem] bg-slate-800/30 backdrop-blur-xl p-8 md:p-10 shadow-2xl border border-white/10 hover:bg-slate-800/40 transition-colors duration-500">
+        <div className="relative overflow-hidden rounded-[2.5rem] bg-white/40 dark:bg-slate-800/30 backdrop-blur-xl p-8 md:p-10 shadow-xl border border-white/60 dark:border-white/10 hover:bg-white/60 dark:hover:bg-slate-800/40 transition-colors duration-500">
           <div className="relative z-20 flex flex-col h-full">
             <div className="mb-8 flex items-center justify-between pointer-events-auto">
-              <h2 className="text-2xl font-bold tracking-tight text-white">待读</h2>
-              <span className="text-sm font-medium text-slate-300">{unreadBooks.length} 本</span>
+              {/* 文字颜色适配 */}
+              <h2 className="text-2xl font-bold tracking-tight text-slate-800 dark:text-white">待读</h2>
+              <span className="text-sm font-medium text-slate-500 dark:text-slate-300">{unreadBooks.length} 本</span>
             </div>
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
               {unreadBooks.map((book) => (
