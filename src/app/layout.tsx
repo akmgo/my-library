@@ -5,7 +5,7 @@ import ThemeToggle from "../components/ThemeToggle";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "我的数字书房 | My Library",
+  title: "My Library",
   description: "极简、沉浸式的个人阅读展厅与数据看板",
   icons: {
     icon: "/favicon.svg",

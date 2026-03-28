@@ -20,6 +20,7 @@ import {
 // === 组件与动作引入 ===
 import AddExcerptDialog from "../../../components/book/AddExcerptDialog";
 import DeleteBookButton from "../../../components/book/DeleteBookButton";
+import EditBookDialog from "../../../components/book/EditBookDialog";
 import { getBookDetail, updateBook } from "../../actions";
 
 // === 常量配置 ===
@@ -172,8 +173,7 @@ function BookContent({ params }: { params: Promise<{ id: string }> }) {
       <div className="relative z-10 w-full max-w-5xl mx-auto px-6 md:px-12 pt-20 pb-32 flex flex-col">
         {/* 顶部控制栏 */}
         <div className="flex items-center justify-between mb-10 md:mb-16">
-          {/* ✨ 返回按钮双端适配 */}
-          {/* ✨ 返回按钮：统一为“带边框与阴影的高级白玉胶囊” */}
+          {/* 返回按钮 */}
           <button
             onClick={() => router.back()}
             className="inline-flex items-center justify-center gap-2 px-5 py-2.5 text-sm font-bold rounded-full bg-white/70 dark:bg-white/10 border border-slate-200/80 dark:border-white/10 transition duration-300 hover:bg-white dark:hover:bg-white/20 hover:border-slate-300 dark:hover:border-white/20 shadow-sm hover:shadow-md dark:shadow-none dark:hover:shadow-[0_0_20px_rgba(255,255,255,0.1)] hover:-translate-y-0.5 active:scale-95 text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-white group backdrop-blur-xl"
@@ -181,7 +181,12 @@ function BookContent({ params }: { params: Promise<{ id: string }> }) {
             <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
             返回书架
           </button>
-          <DeleteBookButton bookId={id} title={book.title} />
+          
+          {/* ✨ 右侧操作组：编辑与删除并排 */}
+          <div className="flex items-center gap-3">
+            <EditBookDialog book={book} onSuccess={fetchBookData} />
+            <DeleteBookButton bookId={id} title={book.title} />
+          </div>
         </div>
 
         {/* 1. 头部英雄卡片 (封面与标题) */}
