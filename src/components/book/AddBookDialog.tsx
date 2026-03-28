@@ -122,7 +122,7 @@ export default function AddBookDialog() {
         setOpen(false); 
         
         // 强制刷新页面，暴力打破缓存，新书绝对上墙！
-        window.location.reload(); 
+        router.refresh();
       } else {
         alert("❌ 数据库保存失败：" + result.error);
       }
