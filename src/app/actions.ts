@@ -31,8 +31,8 @@ export async function getAllBooks() {
 
     if (!db) throw new Error("数据库连接失败");
     
-    // 2. 缓存未命中，穿透查询 D1
-    const { results } = await db.prepare("SELECT * FROM books ORDER BY createdAt DESC").all();
+    // ✨ 核心修复：把 createdAt 改成了 addedAt
+    const { results } = await db.prepare("SELECT * FROM books ORDER BY addedAt DESC").all();
     
     const books = results.map((book: any) => ({
       ...book,
@@ -58,7 +58,16 @@ export async function getBookDetail(id: string) {
   try {
     const { env } = await getCloudflareContext({ async: true });
     const db = env.library_db as any;
+    const kv = env.LIBRARY_CACHE as any;
+    const cacheKey = `book_detail_${id}`; // ✨ 为每本书生成独立缓存键
 
+    // 1. 尝试命中缓存
+    if (kv) {
+      const cachedData = await kv.get(cacheKey, "json");
+      if (cachedData) return { success: true, ...cachedData };
+    }
+
+    // 2. 缓存未命中，查数据库
     const book = await db.prepare("SELECT * FROM books WHERE id = ?").bind(id).first();
     if (!book) return { success: false, error: "未找到该书籍" };
 
@@ -69,7 +78,12 @@ export async function getBookDetail(id: string) {
       .bind(id)
       .all();
 
-    return { success: true, book, excerpts };
+    const responseData = { book, excerpts };
+
+    // 3. 写入缓存
+    if (kv) await kv.put(cacheKey, JSON.stringify(responseData));
+
+    return { success: true, ...responseData };
   } catch (error: any) {
     return { success: false, error: error.message };
   }
@@ -125,6 +139,7 @@ export async function updateBook(id: string, updates: any) {
       .run();
 
     // 清理缓存并刷新关联页面
+    if (kv) await kv.delete(`book_detail_${id}`);
     if (kv) await kv.delete(CACHE_KEY_ALL_BOOKS);
     revalidatePath(`/books/${id}`);
     revalidatePath(`/`);
@@ -151,6 +166,7 @@ export async function deleteBookFromDB(id: string) {
     await db.prepare("DELETE FROM books WHERE id = ?").bind(id).run();
     await db.prepare("DELETE FROM excerpts WHERE bookId = ?").bind(id).run();
     
+    if (kv) await kv.delete(`book_detail_${id}`);
     if (kv) await kv.delete(CACHE_KEY_ALL_BOOKS);
     revalidatePath("/");
     
@@ -173,6 +189,8 @@ export async function addExcerptToDB(bookId: string, content: string) {
     const { env } = await getCloudflareContext({ async: true });
     const db = env.library_db as any;
     const id = crypto.randomUUID();
+    const kv = env.LIBRARY_CACHE as any;
+
 
     await db
       .prepare("INSERT INTO excerpts (id, bookId, content) VALUES (?, ?, ?)")
@@ -180,6 +198,9 @@ export async function addExcerptToDB(bookId: string, content: string) {
       .run();
 
     revalidatePath(`/books/${bookId}`);
+
+    if (kv) await kv.delete(`book_detail_${bookId}`);
+
     return { success: true, id };
   } catch (error: any) {
     console.error("Failed to add excerpt:", error);
@@ -266,6 +287,9 @@ export async function getPresignedUrl(fileName: string, contentType: string) {
   }
 }
 
+// ============================================================================
+// 📊 获取仪表盘统计数据 (带 KV 缓存提速)
+// ============================================================================
 export async function getDashboardStats(params: {
   year: string;       
   month: string;      
@@ -274,21 +298,28 @@ export async function getDashboardStats(params: {
   try {
     const { env } = await getCloudflareContext({ async: true });
     const db = env.library_db as any;
+    const kv = env.LIBRARY_CACHE as any;
+    const cacheKey = "dashboard_global_stats"; // ✨ 仪表盘全局缓存键
+
+    // 1. 先尝试从 KV 缓存拿数据 (秒开体验)
+    if (kv) {
+      const cached = await kv.get(cacheKey, "json");
+      if (cached) return { success: true, ...cached };
+    }
+
     if (!db) throw new Error("数据库连接失败");
 
-    // 1. 今年已读本数 (保持不变)
+    // 2. 如果没有缓存，则执行真实的数据库查询
     const yearCountRes = await db
       .prepare("SELECT COUNT(*) as count FROM books WHERE status = 'FINISHED' AND endTime LIKE ?")
       .bind(`${params.year}-%`)
       .first();
 
-    // 2. 本月阅读天数 (🧹 删除了 action_type 过滤)
     const monthDaysRes = await db
       .prepare("SELECT COUNT(DISTINCT date) as count FROM reading_logs WHERE date LIKE ?")
       .bind(`${params.month}-%`)
       .first();
 
-    // 3. 本周打卡轨迹 (🧹 删除了 action_type 过滤)
     const placeholders = params.weekDates.map(() => "?").join(",");
     const weekLogsRes = await db
       .prepare(`SELECT DISTINCT date FROM reading_logs WHERE date IN (${placeholders})`)
@@ -297,12 +328,19 @@ export async function getDashboardStats(params: {
 
     const checkedInDates = weekLogsRes.results.map((r: any) => r.date);
 
-    return {
-      success: true,
+    // 3. 组装返回数据
+    const statsData = {
       yearReadCount: yearCountRes?.count || 0,
       monthReadDays: monthDaysRes?.count || 0,
       checkedInDates: checkedInDates,
     };
+
+    // 4. 将查到的最新数据写入 KV 缓存，下次直接秒开
+    if (kv) {
+      await kv.put(cacheKey, JSON.stringify(statsData));
+    }
+
+    return { success: true, ...statsData };
   } catch (error: any) {
     console.error("获取仪表盘数据失败:", error);
     return { success: false, error: error.message };
@@ -339,12 +377,15 @@ export async function recordTodayReading(dateStr: string) {
     // 2. 生成打卡所需的数据
     const newId = crypto.randomUUID();
     const now = new Date().toISOString();
+    const kv = env.LIBRARY_CACHE as any;
 
     // 3. 真实写入数据库，把 book_id 一并存进去！
     await db
       .prepare("INSERT INTO reading_logs (id, date, book_id, created_at) VALUES (?, ?, ?, ?)")
       .bind(newId, dateStr, currentBookId, now)
       .run();
+
+    if (kv) await kv.delete("dashboard_global_stats");  
 
     return { success: true };
   } catch (error: any) {
