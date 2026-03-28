@@ -20,6 +20,7 @@
 		"clsx": "^2.1.1",
 		"colorthief": "^3.3.1",
 		"date-fns": "^4.1.0",
+		"dotenv": "^17.3.1",
 		"lucide-react": "^0.577.0",
 		"mini-svg-data-uri": "^1.4.4",
 		"motion": "^12.38.0",

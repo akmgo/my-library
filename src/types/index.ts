@@ -18,6 +18,7 @@ export interface Book {
   tags?: string[];
   addedAt?: string; // 数据库中的插入时间
   progress?: number; // ✨ 新增：阅读进度 (0-100)
+  verticalCoverUrl?: string;
 }
 
 // ==========================================

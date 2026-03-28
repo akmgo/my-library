@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+
 // 缓存键名常量，防止拼写错误
 const CACHE_KEY_ALL_BOOKS = "all_books_list";
 
@@ -21,17 +22,13 @@ export async function getAllBooks() {
     const db = env.library_db as any;
     const kv = env.LIBRARY_CACHE as any; 
     
-    // 1. 尝试命中 KV 缓存
     if (kv) {
       const cachedBooks = await kv.get(CACHE_KEY_ALL_BOOKS, "json");
-      if (cachedBooks) {
-        return { success: true, books: cachedBooks };
-      }
+      if (cachedBooks) return { success: true, books: cachedBooks };
     }
 
     if (!db) throw new Error("数据库连接失败");
     
-    // ✨ 核心修复：把 createdAt 改成了 addedAt
     const { results } = await db.prepare("SELECT * FROM books ORDER BY addedAt DESC").all();
     
     const books = results.map((book: any) => ({
@@ -39,10 +36,7 @@ export async function getAllBooks() {
       tags: JSON.parse(book.tags || '[]')
     }));
 
-    // 3. 回写 KV 缓存
-    if (kv) {
-      await kv.put(CACHE_KEY_ALL_BOOKS, JSON.stringify(books));
-    }
+    if (kv) await kv.put(CACHE_KEY_ALL_BOOKS, JSON.stringify(books));
 
     return { success: true, books };
   } catch (error: any) {
@@ -59,15 +53,13 @@ export async function getBookDetail(id: string) {
     const { env } = await getCloudflareContext({ async: true });
     const db = env.library_db as any;
     const kv = env.LIBRARY_CACHE as any;
-    const cacheKey = `book_detail_${id}`; // ✨ 为每本书生成独立缓存键
+    const cacheKey = `book_detail_${id}`;
 
-    // 1. 尝试命中缓存
     if (kv) {
       const cachedData = await kv.get(cacheKey, "json");
       if (cachedData) return { success: true, ...cachedData };
     }
 
-    // 2. 缓存未命中，查数据库
     const book = await db.prepare("SELECT * FROM books WHERE id = ?").bind(id).first();
     if (!book) return { success: false, error: "未找到该书籍" };
 
@@ -80,7 +72,6 @@ export async function getBookDetail(id: string) {
 
     const responseData = { book, excerpts };
 
-    // 3. 写入缓存
     if (kv) await kv.put(cacheKey, JSON.stringify(responseData));
 
     return { success: true, ...responseData };
@@ -91,8 +82,14 @@ export async function getBookDetail(id: string) {
 
 /**
  * 录入新书
+ * ✨ 扩充了 verticalCoverUrl 参数
  */
-export async function addBookToDB(formData: { title: string; author: string; coverUrl?: string; }) {
+export async function addBookToDB(formData: { 
+  title: string; 
+  author: string; 
+  coverUrl?: string; 
+  verticalCoverUrl?: string; // 新增字段
+}) {
   try {
     const { env } = await getCloudflareContext({ async: true });
     const db = env.library_db as any;
@@ -102,12 +99,19 @@ export async function addBookToDB(formData: { title: string; author: string; cov
 
     const id = crypto.randomUUID();
 
+    // ✨ 更新 INSERT 语句，写入 verticalCoverUrl
     await db
-      .prepare("INSERT INTO books (id, title, author, coverUrl, status) VALUES (?, ?, ?, ?, ?)")
-      .bind(id, formData.title, formData.author, formData.coverUrl || "", "UNREAD")
+      .prepare("INSERT INTO books (id, title, author, coverUrl, verticalCoverUrl, status) VALUES (?, ?, ?, ?, ?, ?)")
+      .bind(
+        id, 
+        formData.title, 
+        formData.author, 
+        formData.coverUrl || "", 
+        formData.verticalCoverUrl || "", // 默认空字符串防报错
+        "UNREAD"
+      )
       .run();
 
-    // 清理缓存并刷新页面
     if (kv) await kv.delete(CACHE_KEY_ALL_BOOKS);
     revalidatePath("/");
     
@@ -120,8 +124,9 @@ export async function addBookToDB(formData: { title: string; author: string; cov
 
 /**
  * 动态更新书籍信息 (无感保存)
+ * 💡 这里你原本的动态拼接设计极好，直接支持传入 verticalCoverUrl 且无需修改 SQL！
  */
-export async function updateBook(id: string, updates: any) {
+export async function updateBook(id: string, updates: Record<string, any>) {
   try {
     const { env } = await getCloudflareContext({ async: true });
     const db = env.library_db as any;
@@ -133,12 +138,12 @@ export async function updateBook(id: string, updates: any) {
     const values = Object.values(updates);
     const setClause = keys.map((k) => `${k} = ?`).join(", ");
 
+    // 只要 updates 里有 verticalCoverUrl，就会被自动拼接进 SET 语句
     await db
       .prepare(`UPDATE books SET ${setClause} WHERE id = ?`)
       .bind(...values, id)
       .run();
 
-    // 清理缓存并刷新关联页面
     if (kv) await kv.delete(`book_detail_${id}`);
     if (kv) await kv.delete(CACHE_KEY_ALL_BOOKS);
     revalidatePath(`/books/${id}`);
@@ -162,7 +167,6 @@ export async function deleteBookFromDB(id: string) {
 
     if (!db) throw new Error("数据库连接失败");
     
-    // 开启删除事务
     await db.prepare("DELETE FROM books WHERE id = ?").bind(id).run();
     await db.prepare("DELETE FROM excerpts WHERE bookId = ?").bind(id).run();
     
@@ -181,9 +185,6 @@ export async function deleteBookFromDB(id: string) {
 // 📝 摘录管理 (Excerpts Management)
 // ============================================================================
 
-/**
- * 录入新摘录
- */
 export async function addExcerptToDB(bookId: string, content: string) {
   try {
     const { env } = await getCloudflareContext({ async: true });
@@ -191,14 +192,12 @@ export async function addExcerptToDB(bookId: string, content: string) {
     const id = crypto.randomUUID();
     const kv = env.LIBRARY_CACHE as any;
 
-
     await db
       .prepare("INSERT INTO excerpts (id, bookId, content) VALUES (?, ?, ?)")
       .bind(id, bookId, content)
       .run();
 
     revalidatePath(`/books/${bookId}`);
-
     if (kv) await kv.delete(`book_detail_${bookId}`);
 
     return { success: true, id };
@@ -208,9 +207,6 @@ export async function addExcerptToDB(bookId: string, content: string) {
   }
 }
 
-/**
- * 联网抓取书籍基本信息 (OpenLibrary)
- */
 export async function searchBookByTitle(title: string) {
   try {
     const response = await fetch(
@@ -244,7 +240,6 @@ export async function getPresignedUrl(fileName: string, contentType: string) {
   try {
     const { env } = await getCloudflareContext({ async: true });
     
-    // 提取环境变量，防止爆红
     const accountId = env.R2_ACCOUNT_ID;
     const accessKeyId = env.R2_ACCESS_KEY_ID;
     const secretAccessKey = env.R2_SECRET_ACCESS_KEY;
@@ -262,11 +257,9 @@ export async function getPresignedUrl(fileName: string, contentType: string) {
         accessKeyId: accessKeyId as string,
         secretAccessKey: secretAccessKey as string,
       },
-      // 🛡️ 救命装甲 1：强制路径模式！没有它，跨域和 DNS 必定报错！
       forcePathStyle: true,
     });
 
-    // 🛡️ 救命装甲 2：加入 UUID 防止批量并发时毫秒级撞名！统一放进 covers/ 文件夹
     const safeFileName = fileName.replace(/\s+/g, '-');
     const uniqueFileName = `covers/${Date.now()}-${crypto.randomUUID().slice(0, 8)}-${safeFileName}`;
 
@@ -276,7 +269,6 @@ export async function getPresignedUrl(fileName: string, contentType: string) {
       ContentType: contentType,
     });
 
-    // 签发 5 分钟有效期的临时上传链接
     const uploadUrl = await getSignedUrl(S3, command, { expiresIn: 300 });
     const finalUrl = `${publicDomain}/${uniqueFileName}`;
 
@@ -299,9 +291,8 @@ export async function getDashboardStats(params: {
     const { env } = await getCloudflareContext({ async: true });
     const db = env.library_db as any;
     const kv = env.LIBRARY_CACHE as any;
-    const cacheKey = "dashboard_global_stats"; // ✨ 仪表盘全局缓存键
+    const cacheKey = "dashboard_global_stats";
 
-    // 1. 先尝试从 KV 缓存拿数据 (秒开体验)
     if (kv) {
       const cached = await kv.get(cacheKey, "json");
       if (cached) return { success: true, ...cached };
@@ -309,7 +300,6 @@ export async function getDashboardStats(params: {
 
     if (!db) throw new Error("数据库连接失败");
 
-    // 2. 如果没有缓存，则执行真实的数据库查询
     const yearCountRes = await db
       .prepare("SELECT COUNT(*) as count FROM books WHERE status = 'FINISHED' AND endTime LIKE ?")
       .bind(`${params.year}-%`)
@@ -328,17 +318,13 @@ export async function getDashboardStats(params: {
 
     const checkedInDates = weekLogsRes.results.map((r: any) => r.date);
 
-    // 3. 组装返回数据
     const statsData = {
       yearReadCount: yearCountRes?.count || 0,
       monthReadDays: monthDaysRes?.count || 0,
       checkedInDates: checkedInDates,
     };
 
-    // 4. 将查到的最新数据写入 KV 缓存，下次直接秒开
-    if (kv) {
-      await kv.put(cacheKey, JSON.stringify(statsData));
-    }
+    if (kv) await kv.put(cacheKey, JSON.stringify(statsData));
 
     return { success: true, ...statsData };
   } catch (error: any) {
@@ -355,31 +341,22 @@ export async function recordTodayReading(dateStr: string) {
     const { env } = await getCloudflareContext({ async: true });
     const db = env.library_db as any;
 
-    // 1. 检查今天是否已经打过卡，防止重复
     const existing = await db
       .prepare("SELECT id FROM reading_logs WHERE date = ?")
       .bind(dateStr)
       .first();
 
-    if (existing) {
-      return { success: true, message: "今日已打卡" };
-    }
+    if (existing) return { success: true, message: "今日已打卡" };
 
-    // ✨ 核心新增：去 books 表里寻找当前状态为 'READING' 的那本书
-    // 因为你规定了同一时间只有一本，所以 LIMIT 1 就能精准命中
     const readingBook = await db
       .prepare("SELECT id FROM books WHERE status = 'READING' LIMIT 1")
       .first();
 
-    // 如果当前有在读的书，提取它的 id；如果没有，则设为 null (防止断档报错)
     const currentBookId = readingBook ? readingBook.id : null;
-
-    // 2. 生成打卡所需的数据
     const newId = crypto.randomUUID();
     const now = new Date().toISOString();
     const kv = env.LIBRARY_CACHE as any;
 
-    // 3. 真实写入数据库，把 book_id 一并存进去！
     await db
       .prepare("INSERT INTO reading_logs (id, date, book_id, created_at) VALUES (?, ?, ?, ?)")
       .bind(newId, dateStr, currentBookId, now)
@@ -390,6 +367,43 @@ export async function recordTodayReading(dateStr: string) {
     return { success: true };
   } catch (error: any) {
     console.error("打卡写入失败:", error);
+    return { success: false, error: error.message };
+  }
+}
+
+// ============================================================================
+// ✨ 获取所有阅读日志 (手动在服务端做类似 JOIN 的操作关联书籍)
+// ============================================================================
+export async function getAllReadingLogs() {
+  try {
+    const { env } = await getCloudflareContext({ async: true });
+    const db = env.library_db as any;
+
+    // 1. 从 D1 中拉取所有的打卡记录（注意要用 .prepare(...).all() 语法）
+    const { results: logs } = await db
+      .prepare("SELECT * FROM reading_logs ORDER BY date DESC")
+      .all();
+
+    // 2. 调用现成的 getAllBooks 方法，拿到所有书籍
+    const booksRes = await getAllBooks();
+    const allBooks = booksRes.success && booksRes.books ? booksRes.books : [];
+
+    // 3. 建立一个 O(1) 的书籍速查字典 (通过书的 ID)
+    const bookDictionary = new Map();
+    allBooks.forEach((book: any) => bookDictionary.set(book.id, book));
+
+    // 4. 将书籍信息“拼”到每一条日志中
+    const enrichedLogs = logs.map((log: any) => {
+      return {
+        ...log,
+        // 根据日志里的 book_id，去字典里把完整的书本对象捞出来
+        book: bookDictionary.get(log.book_id) || null
+      };
+    });
+
+    return { success: true, logs: enrichedLogs };
+  } catch (error: any) {
+    console.error("获取阅读日志失败:", error);
     return { success: false, error: error.message };
   }
 }
