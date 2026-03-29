@@ -3,7 +3,7 @@
 
 import { useState } from "react";
 import { Plus, Loader2, Quote, Send } from "lucide-react";
-import { addExcerptToDB } from "../../app/actions";
+import { addExcerptToDB } from "../../app/actions/excerpts";
 
 export default function AddExcerptDialog({
   bookId,

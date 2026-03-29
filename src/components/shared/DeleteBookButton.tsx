@@ -4,7 +4,7 @@
 import { useState, useTransition } from "react";
 import { Trash2, Loader2, AlertCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { deleteBookFromDB } from "../../app/actions";
+import { deleteBookFromDB } from "../../app/actions/books";
 
 export default function DeleteBookButton({
   bookId,

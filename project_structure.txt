@@ -1,0 +1,87 @@
+.
+├── cloudflare-env.d.ts
+├── components.json
+├── database
+│   ├── prod_data_dump.sql
+│   ├── schema.sql
+│   └── update_covers.sql
+├── eslint.config.mjs
+├── next-env.d.ts
+├── next.config.ts
+├── open-next.config.ts
+├── package.json
+├── pnpm-lock.yaml
+├── postcss.config.mjs
+├── project_structure.txt
+├── public
+│   ├── _headers
+│   ├── favicon.svg
+│   ├── file.svg
+│   ├── globe.svg
+│   ├── next.svg
+│   └── window.svg
+├── README.md
+├── scripts
+│   └── migrate_covers.mjs
+├── src
+│   ├── app
+│   │   ├── actions
+│   │   │   ├── books.ts
+│   │   │   ├── excerpts.ts
+│   │   │   ├── reading.ts
+│   │   │   └── storage.ts
+│   │   ├── archive
+│   │   │   └── page.tsx
+│   │   ├── books
+│   │   │   └── [id]
+│   │   │       └── page.tsx
+│   │   ├── globals.css
+│   │   ├── layout.tsx
+│   │   ├── loading.tsx
+│   │   ├── page.tsx
+│   │   └── template.tsx
+│   ├── components
+│   │   ├── archive
+│   │   │   ├── ArchiveClient.tsx
+│   │   │   ├── ArchiveGallery.tsx
+│   │   │   ├── GalleryBookCard.tsx
+│   │   │   └── views
+│   │   │       ├── AllArchiveView.tsx
+│   │   │       ├── InfiniteCalendarView.tsx
+│   │   │       └── YearlyTimelineView.tsx
+│   │   ├── book
+│   │   │   ├── AddBookDialog.tsx
+│   │   │   ├── AddExcerptDialog.tsx
+│   │   │   ├── BookCard.tsx
+│   │   │   ├── BoomDecor.tsx
+│   │   │   ├── DeleteBookButton.tsx
+│   │   │   ├── EditBookDialog.tsx
+│   │   │   └── ReadingProgress.tsx
+│   │   ├── ClientOnly.tsx
+│   │   ├── dashboard
+│   │   │   └── DashboardWidgets.tsx
+│   │   ├── detail
+│   │   │   ├── BookDetailClient.tsx
+│   │   │   ├── BookDossier.tsx
+│   │   │   └── BookExcerpts.tsx
+│   │   ├── dialogs
+│   │   ├── DynamicIslands.tsx
+│   │   ├── home
+│   │   │   ├── BookShelf.tsx
+│   │   │   ├── CurrentReading.tsx
+│   │   │   ├── HeroHeader.tsx
+│   │   │   ├── HomeDashboard.tsx
+│   │   │   └── LibrarySkeleton.tsx
+│   │   ├── ThemeProvider.tsx
+│   │   ├── ThemeToggle.tsx
+│   │   └── ui
+│   │       ├── BackButton.tsx
+│   │       └── TiltCard.tsx
+│   ├── lib
+│   │   └── utils.ts
+│   └── types
+│       └── index.ts
+├── tsconfig.json
+└── wrangler.jsonc
+
+21 directories, 64 files

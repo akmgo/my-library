@@ -1,7 +1,7 @@
 // src/app/layout.tsx
 import type { Metadata } from "next";
-import { ThemeProvider } from "../components/ThemeProvider";
-import ThemeToggle from "../components/ThemeToggle";
+import { ThemeProvider } from "../components/providers/ThemeProvider";
+import ThemeToggle from "../components/providers/ThemeToggle";
 import "./globals.css";
 
 export const metadata: Metadata = {
